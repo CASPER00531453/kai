@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Servis Düellosu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Layout: menu is a bus route sign over a stack of ride tickets; the play screen splits the phone into one half per player. Single deliberate night-bus look. */
+:root{
+  --night:#0f1830;
+  --panel:#18233f;
+  --raise:#22305a;
+  --line:#33457a;
+  --ink:#0a1124;
+  --text:#eef2fb;
+  --muted:#9ba8cc;
+  --p1:#ff8a3d;
+  --p2:#38c6f4;
+  --go:#ffd84d;
+  --bad:#ff4f6d;
+  --ok:#8fe3ae;
+  --display:'Bungee','Arial Black',Impact,system-ui,sans-serif;
+  --body:'Rubik',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--night);color:var(--text);font-family:var(--body);font-size:15px;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible{outline:3px solid var(--go);outline-offset:2px}
+
+/* ---------- Menu ---------- */
+#menu{height:100%;overflow-y:auto}
+.wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:20px 40px;display:grid;gap:22px}
+.sign{background:var(--ink);border:2px solid var(--line);border-radius:10px;padding:16px 18px;display:grid;gap:8px}
+.sign .route{display:flex;gap:10px;align-items:center;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sign .route b{font-family:var(--display);font-weight:400;color:var(--ink);background:var(--go);border-radius:4px;padding:2px 7px;letter-spacing:.04em}
+.sign h1{font-family:var(--display);font-weight:400;color:var(--go);font-size:clamp(30px,9.5vw,46px);line-height:1;margin:0;text-wrap:balance}
+.sign p{margin:0;color:var(--muted);line-height:1.45;max-width:46ch}
+
+.players{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pfield{display:grid;gap:6px;min-width:0}
+.pfield label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pfield input{width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--pc);border-radius:8px;padding:10px 12px;color:var(--text);font:inherit;font-weight:500}
+.pfield[data-p="0"]{--pc:var(--p1)}
+.pfield[data-p="1"]{--pc:var(--p2)}
+
+.tally{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.tally strong{font-family:var(--display);font-weight:400;font-size:20px;font-variant-numeric:tabular-nums}
+.tally .t1{color:var(--p1)} .tally .t2{color:var(--p2)}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px}
+
+.toggle{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;line-height:1.4}
+.toggle input{width:20px;height:20px;margin:1px 0 0;accent-color:var(--go);flex:none}
+.toggle small{display:block;color:var(--muted)}
+
+.section-label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 -10px}
+.tickets{display:grid;gap:10px}
+.ticket{display:grid;grid-template-columns:1fr auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;text-align:left;padding:0;cursor:pointer;overflow:hidden;transition:transform .12s,background .12s}
+.ticket:active{transform:scale(.98);background:var(--raise)}
+.ticket .main{padding:14px 16px;display:grid;gap:6px;min-width:0}
+.ticket .tname{display:block;font-family:var(--display);font-size:19px;color:var(--text)}
+.ticket .tdesc{display:block;color:var(--muted);line-height:1.4}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.chips span{font-size:12px;padding:3px 9px;border-radius:99px;background:var(--raise);color:var(--muted)}
+.chips .ok{color:var(--ok)}
+.chips .warn{color:var(--go)}
+.ticket .stub{border-left:2px dashed var(--line);padding:12px 14px;display:grid;place-content:center;text-align:center;min-width:58px;gap:2px}
+.stub b{font-family:var(--display);font-weight:400;font-size:24px;color:var(--go);line-height:1}
+.stub small{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.foot{color:var(--muted);font-size:13px;line-height:1.5;margin:0}
+
+/* ---------- Play ---------- */
+#play{position:fixed;inset:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);background:var(--night);display:flex;flex-direction:column;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.stage{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+#exit{position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:6;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--raise);font-size:17px;line-height:1;cursor:pointer;display:grid;place-items:center}
+
+.half{flex:50 1 0;min-height:0;display:grid;place-items:center;position:relative;overflow:hidden;background:var(--panel);background:color-mix(in srgb,var(--pc) 13%,var(--night));transition:background .15s,color .15s,flex-grow .08s linear;cursor:pointer}
+.half[data-p="0"]{--pc:var(--p1)}
+.half[data-p="1"]{--pc:var(--p2)}
+.half[data-state="ready"]{background:color-mix(in srgb,var(--pc) 32%,var(--night))}
+.half[data-state="go"]{background:var(--go);color:var(--ink)}
+.half[data-state="win"]{background:var(--pc);color:var(--ink)}
+.half[data-state="bad"]{background:var(--bad);color:var(--ink)}
+.half[data-state="lose"]{background:var(--night);color:var(--muted)}
+.hin{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:16px 20px;max-width:100%;box-sizing:border-box;pointer-events:none}
+.flip{transform:rotate(180deg)}
+.pname{font-family:var(--display);color:var(--pc);font-size:15px;letter-spacing:.05em}
+.half[data-state="go"] .pname,.half[data-state="win"] .pname,.half[data-state="bad"] .pname{color:var(--ink)}
+.big{font-family:var(--display);font-size:clamp(34px,11vw,64px);line-height:1;font-variant-numeric:tabular-nums}
+.big:empty,.small:empty{display:none}
+.small{opacity:.85;font-size:15px;max-width:32ch;line-height:1.45}
+.mid{flex:none;height:46px;display:flex;align-items:center;justify-content:center;gap:14px;background:var(--ink);border-block:1px solid var(--line);padding-inline:58px;box-sizing:border-box;z-index:2}
+.sc{font-family:var(--display);font-weight:400;font-size:24px;min-width:1.4em;text-align:center;font-variant-numeric:tabular-nums}
+.sc[data-p="0"]{color:var(--p1)}
+.sc[data-p="1"]{color:var(--p2)}
+.mlabel{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+
+.card{background:var(--ink);border:1px solid var(--line);border-radius:14px;padding:14px 22px;min-width:60%}
+.card span{font-family:var(--display);font-size:clamp(30px,10vw,54px);line-height:1.1;display:block}
+.card.pop{animation:pop .18s ease-out}
+@keyframes pop{from{transform:scale(.85);opacity:.4}}
+
+canvas{display:block;width:100%;height:100%;touch-action:none}
+
+.strip{flex:none;height:64px;display:grid;place-items:center;background:var(--panel);transition:background .15s,color .15s}
+.strip[data-p="0"]{--pc:var(--p1)}
+.strip[data-p="1"]{--pc:var(--p2)}
+.strip .hin{flex-direction:row;gap:12px;padding:8px 16px}
+.strip .turn{color:var(--muted);font-size:14px}
+.strip.on{background:var(--pc);color:var(--ink)}
+.strip.on .pname,.strip.on .turn{color:var(--ink)}
+.board-wrap{flex:1;min-height:0;display:grid;place-items:center}
+.board{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:8px;background:var(--raise);border-radius:14px;overflow:hidden;box-sizing:border-box;border:1px solid var(--line)}
+.cell{aspect-ratio:1;border-radius:50%;background:var(--night);position:relative;cursor:pointer}
+.cell i{position:absolute;inset:0;border-radius:50%;background:var(--pc);display:none}
+.cell[data-p="0"]{--pc:var(--p1)}
+.cell[data-p="1"]{--pc:var(--p2)}
+.cell[data-p] i{display:block}
+.cell.in i{animation:drop .32s cubic-bezier(.45,0,.75,1)}
+@keyframes drop{from{transform:translateY(calc(var(--fall) * -116%))}}
+.cell.hl i{box-shadow:0 0 0 4px var(--text);animation:pulse .7s ease-in-out infinite alternate}
+@keyframes pulse{to{transform:scale(.82)}}
+
+/* ---------- Overlays ---------- */
+.overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,10,22,.82);padding:16px}
+.res{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 22px;width:min(100%,360px);box-sizing:border-box;display:grid;gap:12px;text-align:center}
+.res .eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.res .who{font-family:var(--display);font-size:clamp(28px,9vw,40px);line-height:1.05;overflow-wrap:anywhere}
+.res .score{color:var(--muted);font-size:16px}
+.res .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.btn{border:0;border-radius:10px;padding:13px 10px;font-weight:700;cursor:pointer;background:var(--raise);color:var(--text)}
+.btn.primary{background:var(--go);color:var(--ink)}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <div class="wrap">
+    <header class="sign">
+      <div class="route"><b>2P</b><span>Tek telefon · iki kişi</span></div>
+      <h1>Servis Düellosu</h1>
+      <p>Telefonu ortaya tutun, ekranın üst yarısı birinize, alt yarısı diğerinize ait. Kısa maçlar, durağa varmadan biter.</p>
+    </header>
+
+    <div class="players">
+      <div class="pfield" data-p="0"><label for="p1name">Üst oyuncu</label><input id="p1name" maxlength="12" autocomplete="off"></div>
+      <div class="pfield" data-p="1"><label for="p2name">Alt oyuncu</label><input id="p2name" maxlength="12" autocomplete="off"></div>
+    </div>
+
+    <div class="tally">
+      <span>Bu telefondaki skor: <strong class="t1" id="t1">0</strong> – <strong class="t2" id="t2">0</strong></span>
+      <button class="linkbtn" id="resetTally" type="button">Sıfırla</button>
+    </div>
+
+    <label class="toggle" for="face">
+      <input type="checkbox" id="face">
+      <span>Karşılıklı oturuyoruz<small>Üst yarıdaki yazılar ters döner, karşındaki düz okur. Yan yana oturuyorsanız kapalı kalsın.</small></span>
+    </label>
+
+    <p class="section-label">Oyunlar</p>
+    <div class="tickets" id="tickets"></div>
+
+    <p class="foot">Yol sarsıntılıysa “sarsıntıya dayanıklı” oyunları seçin. Ekran kapanmasın diye oyun sırasında ekran açık tutulmaya çalışılır.</p>
+  </div>
+</div>
+
+<div id="play" hidden>
+  <button id="exit" type="button" aria-label="Oyundan çık">✕</button>
+  <div class="stage" id="stage"></div>
+</div>
+
+<div class="overlay" id="result" hidden>
+  <div class="res" role="dialog" aria-labelledby="resWho">
+    <div class="eyebrow" id="resGame">Maç bitti</div>
+    <div class="who" id="resWho"></div>
+    <div class="score" id="resScore"></div>
+    <div class="btns">
+      <button class="btn" id="toMenu" type="button">Oyunlar</button>
+      <button class="btn primary" id="again" type="button">Rövanş</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="confirm" hidden>
+  <div class="res" role="dialog" aria-labelledby="cfTitle">
+    <div class="who" id="cfTitle" style="font-size:26px">Oyundan çıkılsın mı?</div>
+    <div class="score">Bu maçın skoru kaybolur.</div>
+    <div class="btns">
+      <button class="btn" id="cfNo" type="button">Devam et</button>
+      <button class="btn primary" id="cfYes" type="button">Çık</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rand = n => Math.floor(Math.random() * n);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const state = {
+  names: store.get('sd-names', ['Turuncu', 'Mavi']),
+  face: store.get('sd-face', false),
+  tally: store.get('sd-tally', [0, 0])
+};
+function buzz(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+let wl = null;
+async function wake(){
+  try{ if('wakeLock' in navigator && !wl){ wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => { wl = null; }); } }catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if(!document.hidden && current) wake(); });
+
+function timers(){
+  const ids = new Set();
+  return {
+    after(ms, fn){ const id = setTimeout(() => { ids.delete(id); fn(); }, ms); ids.add(id); return id; },
+    cancel(id){ clearTimeout(id); ids.delete(id); },
+    clear(){ ids.forEach(clearTimeout); ids.clear(); }
+  };
+}
+const flipCls = i => (i === 0 && state.face) ? ' flip' : '';
+
+/* Two-halves layout shared by the simultaneous games */
+function split(stage, opts){
+  stage.className = 'stage';
+  const half = i => `<div class="half" data-p="${i}"><div class="hin${flipCls(i)}"><div class="pname">${esc(state.names[i])}</div>${opts.extra || ''}<div class="big"></div><div class="small"></div></div></div>`;
+  stage.innerHTML = half(0) + `<div class="mid"><b class="sc" data-p="0">0</b><span class="mlabel">${esc(opts.title)}</span><b class="sc" data-p="1">0</b></div>` + half(1);
+  const halves = [...stage.querySelectorAll('.half')];
+  let handler = null;
+  halves.forEach((h, i) => h.addEventListener('pointerdown', e => { e.preventDefault(); if(handler) handler(i); }));
+  const ui = {
+    halves,
+    set(i, big, small, st){
+      const h = halves[i];
+      h.querySelector('.big').textContent = big == null ? '' : big;
+      h.querySelector('.small').textContent = small || '';
+      h.dataset.state = st || '';
+    },
+    both(big, small, st){ ui.set(0, big, small, st); ui.set(1, big, small, st); },
+    score(s){ stage.querySelectorAll('.sc').forEach((el, i) => { el.textContent = s[i]; }); },
+    onTap(fn){ handler = fn; },
+    ready(rules, cb){
+      const r = [false, false];
+      ui.both('Hazır mısın?', rules + ' Hazırsan kendi yarına dokun.', '');
+      handler = i => {
+        if(r[i]) return;
+        r[i] = true; buzz(15);
+        ui.set(i, 'Hazır', 'Rakip bekleniyor…', 'ready');
+        if(r[0] && r[1]){ handler = null; cb(); }
+      };
+    },
+    countdown(t, cb){
+      let n = 3;
+      const tick = () => {
+        if(n === 0){ cb(); return; }
+        ui.both(String(n), 'Hazırlan', ''); n--; t.after(700, tick);
+      };
+      tick();
+    }
+  };
+  return ui;
+}
+
+/* ---------- 1. Refleks ---------- */
+function refleks(stage, end){
+  const ui = split(stage, { title: 'Refleks · 5 puan' });
+  const t = timers(), TARGET = 5, sc = [0, 0];
+  let phase = 'idle', t0 = 0, goTimer = null;
+  function round(){
+    phase = 'wait';
+    ui.both('Bekle…', 'Sarı olunca bas', '');
+    goTimer = t.after(1400 + Math.random() * 3600, () => {
+      phase = 'go'; t0 = performance.now();
+      ui.both('BAS!', '', 'go'); buzz(25);
+    });
+  }
+  function next(){
+    ui.score(sc); buzz(60);
+    if(sc[0] >= TARGET || sc[1] >= TARGET) t.after(1300, () => end(sc[0] > sc[1] ? 0 : 1, sc.join(' – ')));
+    else t.after(1700, round);
+  }
+  ui.ready('Ekran sarıya dönünce kendi yarına ilk dokunan puanı alır. Erken dokunan puanı rakibine verir.', () => {
+    ui.onTap(i => {
+      if(phase === 'wait'){
+        t.cancel(goTimer); phase = 'res'; sc[1 - i]++;
+        ui.set(i, 'Erken!', 'Puan rakibe gitti', 'bad');
+        ui.set(1 - i, '+1', 'Rakip erken bastı', 'win');
+        next();
+      }else if(phase === 'go'){
+        phase = 'res'; sc[i]++;
+        ui.set(i, Math.round(performance.now() - t0) + ' ms', '+1 puan', 'win');
+        ui.set(1 - i, 'Geç kaldın', '', 'lose');
+        next();
+      }
+    });
+    t.after(400, round);
+  });
+  return () => t.clear();
+}
+
+/* ---------- 2. Halat Çekme ---------- */
+function halat(stage, end){
+  const ui = split(stage, { title: 'Halat · 3 turda 2' });
+  const t = timers(), WIN = 34, STEP = 1.5, rounds = [0, 0];
+  let pos = 0, live = false, taps = [0, 0];
+  const apply = () => { ui.halves[0].style.flexGrow = 50 + pos; ui.halves[1].style.flexGrow = 50 - pos; };
+  function round(){
+    pos = 0; taps = [0, 0]; live = false; apply();
+    ui.countdown(t, () => { live = true; ui.both('ÇEK!', 'Hızlı hızlı dokun', 'go'); buzz(25); });
+  }
+  ui.ready('Kendi yarına olabildiğince hızlı dokun. Her dokunuş çizgiyi rakibe doğru iter. Çizgiyi ekranın ucuna dayayan turu alır.', () => {
+    ui.onTap(i => {
+      if(!live) return;
+      taps[i]++;
+      pos += i === 0 ? STEP : -STEP;
+      apply();
+      ui.set(i, String(taps[i]), 'dokunuş', 'go');
+      if(Math.abs(pos) >= WIN){
+        live = false;
+        const w = pos > 0 ? 0 : 1;
+        rounds[w]++; ui.score(rounds); buzz(80);
+        ui.set(w, 'Turu aldın', '', 'win');
+        ui.set(1 - w, 'Kaybettin', '', 'lose');
+        if(rounds[w] >= 2) t.after(1400, () => end(w, rounds.join(' – ') + ' tur'));
+        else t.after(1800, round);
+      }
+    });
+    round();
+  });
+  return () => t.clear();
+}
+
+/* ---------- 3. Renk Tuzağı ---------- */
+const COLORS = [['KIRMIZI', '#ff5a5a'], ['MAVİ', '#4b8dff'], ['YEŞİL', '#3ddc84'], ['SARI', '#ffd84d'], ['MOR', '#b57bff']];
+function renk(stage, end){
+  const ui = split(stage, { title: 'Renk Tuzağı · 7 puan', extra: '<div class="card"><span>?</span></div>' });
+  const cards = [...stage.querySelectorAll('.card')];
+  const t = timers(), TARGET = 7, sc = [0, 0];
+  let card = null, claimed = false, fined = [false, false], live = false, dealTimer = null;
+  function deal(){
+    const w = rand(COLORS.length);
+    let ink = w;
+    if(Math.random() >= 0.38){ do{ ink = rand(COLORS.length); }while(ink === w); }
+    card = { match: w === ink }; claimed = false; fined = [false, false];
+    cards.forEach(el => {
+      const s = el.firstChild;
+      s.textContent = COLORS[w][0]; s.style.color = COLORS[ink][1];
+      el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    });
+    ui.both('', '', '');
+    dealTimer = t.after(Math.max(800, 1500 - 35 * (sc[0] + sc[1])), deal);
+  }
+  ui.ready('Yazı ile yazının rengi aynıysa (sarı renkte SARI gibi) ilk dokunan +1 alır. Farklıyken dokunursan −1.', () => {
+    cards.forEach(el => { el.firstChild.textContent = '…'; el.firstChild.style.color = ''; });
+    ui.onTap(i => {
+      if(!live || !card) return;
+      if(card.match){
+        if(claimed) return;
+        claimed = true; sc[i]++; buzz(40);
+        ui.set(i, '+1', 'Yakaladın', 'win');
+        ui.set(1 - i, 'Kaçtı', '', 'lose');
+        t.cancel(dealTimer); dealTimer = t.after(700, deal);
+      }else{
+        if(fined[i]) return;
+        fined[i] = true; sc[i] = Math.max(0, sc[i] - 1); buzz([30, 40, 30]);
+        ui.set(i, '−1', 'Tuzak! Renk ile yazı farklı', 'bad');
+      }
+      ui.score(sc);
+      if(sc[i] >= TARGET){ live = false; t.clear(); t.after(900, () => end(i, sc.join(' – '))); }
+    });
+    t.after(600, () => { live = true; deal(); });
+  });
+  return () => t.clear();
+}
+
+/* ---------- 4. Hava Hokeyi ---------- */
+function hokey(stage, end){
+  stage.className = 'stage';
+  stage.innerHTML = '<canvas aria-label="Hava hokeyi sahası"></canvas>';
+  const cv = stage.querySelector('canvas'), cx = cv.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const C = k => css.getPropertyValue(k).trim();
+  const col = { p: [C('--p1'), C('--p2')], panel: C('--panel'), line: C('--line'), text: C('--text'), night: C('--night'), go: C('--go'), font: C('--display') };
+  const TARGET = 5, sc = [0, 0], ptr = new Map();
+  const P = [{x:0,y:0,vx:0,vy:0,tx:0,ty:0}, {x:0,y:0,vx:0,vy:0,tx:0,ty:0}];
+  const puck = { x:0, y:0, vx:0, vy:0 };
+  let W = 0, H = 0, R = 0, r = 0, GW = 0, raf = 0, last = 0, pause = 1.1, msg = 'BAŞLA', over = false, serve = null;
+  function layout(){
+    const b = stage.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = b.width; H = b.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    R = Math.min(W, H) * 0.085; r = R * 0.62; GW = W * 0.44;
+  }
+  function placePaddles(){
+    P[0].x = P[0].tx = W / 2; P[0].y = P[0].ty = H * 0.14;
+    P[1].x = P[1].tx = W / 2; P[1].y = P[1].ty = H * 0.86;
+  }
+  function placePuck(){
+    puck.x = W / 2; puck.vx = puck.vy = 0;
+    puck.y = serve == null ? H / 2 : (serve === 0 ? H * 0.3 : H * 0.7);
+  }
+  function setTarget(i, x, y){
+    const p = P[i];
+    p.tx = Math.min(W - R, Math.max(R, x));
+    p.ty = i === 0 ? Math.min(H / 2 - R * 0.4, Math.max(R, y)) : Math.min(H - R, Math.max(H / 2 + R * 0.4, y));
+  }
+  function pointerPos(e){ const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; }
+  const onDown = e => {
+    e.preventDefault();
+    const [x, y] = pointerPos(e), i = y < H / 2 ? 0 : 1;
+    for(const [id, pl] of ptr) if(pl === i) ptr.delete(id);
+    ptr.set(e.pointerId, i);
+    try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+    setTarget(i, x, y);
+  };
+  const onMove = e => { if(!ptr.has(e.pointerId)) return; e.preventDefault(); const [x, y] = pointerPos(e); setTarget(ptr.get(e.pointerId), x, y); };
+  const onUp = e => { ptr.delete(e.pointerId); };
+  cv.addEventListener('pointerdown', onDown);
+  cv.addEventListener('pointermove', onMove);
+  cv.addEventListener('pointerup', onUp);
+  cv.addEventListener('pointercancel', onUp);
+  const onResize = () => { layout(); placePaddles(); placePuck(); };
+  window.addEventListener('resize', onResize);
+
+  function goal(scorer){
+    sc[scorer]++; buzz(120);
+    serve = 1 - scorer; msg = 'GOL!'; pause = 1.1;
+    puck.vx = puck.vy = 0; puck.x = -999;
+    if(sc[scorer] >= TARGET){
+      over = true; msg = 'GOL!';
+      setTimeout(() => { if(raf) end(scorer, sc.join(' – ')); }, 1200);
+    }
+  }
+  function physics(dt){
+    const maxV = H * 2.4, maxP = H * 7;
+    P.forEach(p => {
+      p.vx = (p.tx - p.x) / dt; p.vy = (p.ty - p.y) / dt;
+      const s = Math.hypot(p.vx, p.vy);
+      if(s > maxP){ p.vx *= maxP / s; p.vy *= maxP / s; }
+    });
+    const N = 6, h = dt / N;
+    for(let k = 0; k < N; k++){
+      P.forEach(p => { p.x += p.vx * h; p.y += p.vy * h; });
+      puck.x += puck.vx * h; puck.y += puck.vy * h;
+      P.forEach(p => {
+        const dx = puck.x - p.x, dy = puck.y - p.y, d = Math.hypot(dx, dy), min = R + r;
+        if(d < min && d > 0.0001){
+          const nx = dx / d, ny = dy / d;
+          puck.x = p.x + nx * min; puck.y = p.y + ny * min;
+          const rvx = puck.vx - p.vx, rvy = puck.vy - p.vy, vn = rvx * nx + rvy * ny;
+          if(vn < 0){ puck.vx -= 1.9 * vn * nx; puck.vy -= 1.9 * vn * ny; buzz(8); }
+        }
+      });
+      const s = Math.hypot(puck.vx, puck.vy);
+      if(s > maxV){ puck.vx *= maxV / s; puck.vy *= maxV / s; }
+      if(puck.x < r){ puck.x = r; puck.vx = Math.abs(puck.vx); }
+      if(puck.x > W - r){ puck.x = W - r; puck.vx = -Math.abs(puck.vx); }
+      const inMouth = Math.abs(puck.x - W / 2) < GW / 2 - r * 0.3;
+      if(!inMouth){
+        if(puck.y < r){ puck.y = r; puck.vy = Math.abs(puck.vy); }
+        if(puck.y > H - r){ puck.y = H - r; puck.vy = -Math.abs(puck.vy); }
+      }
+      if(puck.y < -r){ goal(1); return; }
+      if(puck.y > H + r){ goal(0); return; }
+    }
+    const f = Math.pow(0.72, dt);
+    puck.vx *= f; puck.vy *= f;
+  }
+  function text(str, x, y, size, color, flip){
+    cx.save(); cx.translate(x, y); if(flip) cx.rotate(Math.PI);
+    cx.fillStyle = color; cx.font = `${size}px ${col.font}`; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(str, 0, 0); cx.restore();
+  }
+  function draw(){
+    cx.fillStyle = col.panel; cx.fillRect(0, 0, W, H);
+    cx.strokeStyle = col.line; cx.lineWidth = 3;
+    cx.beginPath(); cx.moveTo(0, H / 2); cx.lineTo(W, H / 2); cx.stroke();
+    cx.beginPath(); cx.arc(W / 2, H / 2, Math.min(W, H) * 0.16, 0, Math.PI * 2); cx.stroke();
+    cx.fillStyle = col.p[0]; cx.fillRect(W / 2 - GW / 2, 0, GW, 7);
+    cx.fillStyle = col.p[1]; cx.fillRect(W / 2 - GW / 2, H - 7, GW, 7);
+    cx.globalAlpha = 0.35;
+    text(String(sc[0]), W - 40, H / 2 - 40, 44, col.p[0], state.face);
+    text(String(sc[1]), W - 40, H / 2 + 40, 44, col.p[1], false);
+    cx.globalAlpha = 1;
+    P.forEach((p, i) => {
+      cx.fillStyle = col.p[i]; cx.beginPath(); cx.arc(p.x, p.y, R, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = col.night; cx.globalAlpha = 0.25; cx.beginPath(); cx.arc(p.x, p.y, R * 0.45, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
+    });
+    if(puck.x > -100){ cx.fillStyle = col.text; cx.beginPath(); cx.arc(puck.x, puck.y, r, 0, Math.PI * 2); cx.fill(); }
+    if(pause > 0 && msg){
+      text(msg, W / 2, H / 2 - 50, 34, col.go, state.face);
+      text(msg, W / 2, H / 2 + 50, 34, col.go, false);
+    }
+  }
+  function frame(ts){
+    const dt = Math.min(1 / 30, last ? (ts - last) / 1000 : 1 / 60);
+    last = ts;
+    if(pause > 0){
+      pause -= dt;
+      P.forEach(p => { p.x = p.tx; p.y = p.ty; p.vx = p.vy = 0; });
+      if(pause <= 0 && !over){ msg = ''; placePuck(); }
+    }else if(!over){
+      physics(dt);
+    }
+    draw();
+    raf = requestAnimationFrame(frame);
+  }
+  layout(); placePaddles(); placePuck();
+  raf = requestAnimationFrame(frame);
+  return () => {
+    cancelAnimationFrame(raf); raf = 0;
+    window.removeEventListener('resize', onResize);
+  };
+}
+
+/* ---------- 5. Dört Bağla ---------- */
+function dortbag(stage, end){
+  const ROWS = 6, COLS = 7, t = timers();
+  const g = Array.from({ length: ROWS }, () => Array(COLS).fill(-1));
+  let turn = rand(2), over = false, moves = 0;
+  stage.className = 'stage';
+  const strip = i => `<div class="strip" data-p="${i}"><div class="hin${flipCls(i)}"><span class="pname">${esc(state.names[i])}</span><span class="turn"></span></div></div>`;
+  let cells = '';
+  for(let rr = 0; rr < ROWS; rr++) for(let c = 0; c < COLS; c++) cells += `<div class="cell" data-r="${rr}" data-c="${c}"><i></i></div>`;
+  stage.innerHTML = strip(0) + `<div class="board-wrap"><div class="board" role="grid" aria-label="Dört Bağla tahtası">${cells}</div></div>` + strip(1);
+  const strips = [...stage.querySelectorAll('.strip')];
+  const board = stage.querySelector('.board'), wrap = stage.querySelector('.board-wrap');
+  const cellEl = (rr, c) => board.children[rr * COLS + c];
+  function size(){
+    const b = wrap.getBoundingClientRect();
+    const w = Math.max(160, Math.min(b.width - 112, (b.height - 20) * COLS / ROWS, 520));
+    board.style.width = w + 'px';
+  }
+  function paint(msg){
+    strips.forEach((s, i) => {
+      s.classList.toggle('on', i === turn);
+      s.querySelector('.turn').textContent = msg ? msg[i] : (i === turn ? 'Sıra sende, bir sütuna dokun' : 'Rakibin oynuyor');
+    });
+  }
+  function line(rr, c){
+    const p = g[rr][c];
+    for(const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]){
+      const out = [[rr, c]];
+      for(const s of [1, -1]){
+        let y = rr + dr * s, x = c + dc * s;
+        while(y >= 0 && y < ROWS && x >= 0 && x < COLS && g[y][x] === p){ out.push([y, x]); y += dr * s; x += dc * s; }
+      }
+      if(out.length >= 4) return out;
+    }
+    return null;
+  }
+  function drop(c){
+    let rr = ROWS - 1;
+    while(rr >= 0 && g[rr][c] !== -1) rr--;
+    if(rr < 0){ buzz([20, 30, 20]); return; }
+    g[rr][c] = turn; moves++;
+    const el = cellEl(rr, c);
+    el.dataset.p = turn; el.style.setProperty('--fall', rr + 1); el.classList.add('in');
+    buzz(15);
+    const w = line(rr, c);
+    if(w){
+      over = true;
+      w.forEach(([y, x]) => cellEl(y, x).classList.add('hl'));
+      paint(turn === 0 ? ['Dörtledin!', 'Kaybettin'] : ['Kaybettin', 'Dörtledin!']);
+      const winner = turn;
+      t.after(1600, () => end(winner, moves + ' hamlede dörtledi'));
+    }else if(moves === ROWS * COLS){
+      over = true; paint(['Berabere', 'Berabere']);
+      t.after(1200, () => end(-1, 'Tahta doldu'));
+    }else{
+      turn = 1 - turn; paint();
+    }
+  }
+  board.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const cell = e.target.closest('.cell');
+    if(!cell || over) return;
+    drop(+cell.dataset.c);
+  });
+  window.addEventListener('resize', size);
+  size(); paint();
+  return () => { t.clear(); window.removeEventListener('resize', size); };
+}
+
+/* ---------- Catalogue & flow ---------- */
+const GAMES = [
+  { key: 'refleks', name: 'Refleks', desc: 'Ekran sarıya dönünce ilk dokunan kazanır. Erken dokunan yanar.', min: '1', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: refleks },
+  { key: 'halat', name: 'Halat Çekme', desc: 'Kendi yarına çılgınca dokun, çizgiyi rakibin ucuna it.', min: '1', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: halat },
+  { key: 'renk', name: 'Renk Tuzağı', desc: 'Yazı ile rengi aynı olunca bas. Tuzağa düşen puan kaybeder.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: renk },
+  { key: 'hokey', name: 'Hava Hokeyi', desc: 'Parmağınla raketi sürükle, pulu rakibin kalesine sok. 5 gol.', min: '3', tags: [['warn', 'Sarsıntıda zorlaşır'], ['', 'Aynı anda']], start: hokey },
+  { key: 'dortbag', name: 'Dört Bağla', desc: 'Sırayla taş bırakın, yan yana dört taşı ilk dizen kazanır.', min: '4', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: dortbag }
+];
+let current = null;
+
+function showScreen(name){
+  $('#menu').hidden = name !== 'menu';
+  $('#play').hidden = name !== 'play';
+  $('#result').hidden = true;
+  $('#confirm').hidden = true;
+}
+function stopGame(){
+  if(current){ try{ current.cleanup && current.cleanup(); }catch(e){} current = null; }
+}
+function startGame(key){
+  stopGame();
+  const game = GAMES.find(g => g.key === key);
+  showScreen('play');
+  const stage = $('#stage');
+  stage.innerHTML = '';
+  const token = {};
+  current = { key, token, cleanup: null };
+  current.cleanup = game.start(stage, (winner, detail) => { if(current && current.token === token) finish(game, winner, detail); });
+  wake();
+}
+function finish(game, winner, detail){
+  if(winner >= 0){ state.tally[winner]++; store.set('sd-tally', state.tally); }
+  renderTally();
+  $('#resGame').textContent = game.name + ' bitti';
+  const who = $('#resWho');
+  who.textContent = winner >= 0 ? state.names[winner] + ' kazandı' : 'Berabere';
+  who.style.color = winner === 0 ? 'var(--p1)' : winner === 1 ? 'var(--p2)' : 'var(--text)';
+  $('#resScore').textContent = detail || '';
+  $('#result').hidden = false;
+  $('#again').focus();
+}
+function toMenu(){ stopGame(); showScreen('menu'); }
+
+$('#again').addEventListener('click', () => { if(current) startGame(current.key); });
+$('#toMenu').addEventListener('click', toMenu);
+$('#exit').addEventListener('click', () => { if(!$('#result').hidden) return toMenu(); $('#confirm').hidden = false; });
+$('#cfNo').addEventListener('click', () => { $('#confirm').hidden = true; });
+$('#cfYes').addEventListener('click', toMenu);
+
+function renderTally(){ $('#t1').textContent = state.tally[0]; $('#t2').textContent = state.tally[1]; }
+$('#resetTally').addEventListener('click', () => { state.tally = [0, 0]; store.set('sd-tally', state.tally); renderTally(); });
+
+['#p1name', '#p2name'].forEach((sel, i) => {
+  const inp = $(sel);
+  inp.value = state.names[i];
+  inp.addEventListener('input', () => {
+    state.names[i] = inp.value.trim() || (i === 0 ? 'Turuncu' : 'Mavi');
+    store.set('sd-names', state.names);
+  });
+});
+const face = $('#face');
+face.checked = !!state.face;
+face.addEventListener('change', () => { state.face = face.checked; store.set('sd-face', state.face); });
+
+$('#tickets').innerHTML = GAMES.map(g => `
+  <button class="ticket" type="button" data-key="${g.key}">
+    <span class="main">
+      <span class="tname">${esc(g.name)}</span>
+      <span class="tdesc">${esc(g.desc)}</span>
+      <span class="chips">${g.tags.map(([c, l]) => `<span class="${c}">${esc(l)}</span>`).join('')}</span>
+    </span>
+    <span class="stub"><b>${g.min}</b><small>dk</small></span>
+  </button>`).join('');
+$('#tickets').addEventListener('click', e => {
+  const b = e.target.closest('.ticket');
+  if(b) startGame(b.dataset.key);
+});
+renderTally();
+})();
+</script>
+</body>
+</html>
