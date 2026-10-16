@@ -125,6 +125,40 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .cell.hl i{box-shadow:0 0 0 4px var(--text);animation:pulse .7s ease-in-out infinite alternate}
 @keyframes pulse{to{transform:scale(.82)}}
 
+/* Matematik */
+.q{font-family:var(--display);font-size:clamp(28px,9vw,46px);line-height:1.1}
+.q:empty,.opts:empty{display:none}
+.opts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;pointer-events:auto}
+.opt{font-family:var(--display);font-size:24px;min-width:76px;padding:12px 10px;border-radius:12px;border:2px solid var(--line);background:var(--ink);color:var(--text);cursor:pointer;font-variant-numeric:tabular-nums}
+.opt.right{background:var(--ok);border-color:var(--ok);color:var(--ink)}
+.opt.wrong{background:var(--bad);border-color:var(--bad);color:var(--ink)}
+
+/* Hedef Avı */
+.tlayer{position:absolute;inset:0;z-index:1;pointer-events:none}
+.tgt{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,var(--text) 0 22%,var(--pc) 23% 58%,var(--text) 59% 70%,var(--pc) 71%);box-shadow:0 0 0 3px var(--ink);pointer-events:auto;cursor:pointer}
+.tgt.pop{animation:tpop .15s ease-out}
+@keyframes tpop{from{transform:translate(-50%,-50%) scale(.4)}}
+
+/* Sıralı oyunlar: skor şeritleri */
+.tsc{font-family:var(--display);font-weight:400;font-size:20px;font-variant-numeric:tabular-nums}
+
+/* Hafıza */
+.mem{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mcard{aspect-ratio:1;border-radius:10px;border:1px solid var(--line);background:var(--raise);font-size:clamp(22px,7vw,36px);line-height:1;padding:0;cursor:pointer;transition:background .15s,transform .15s}
+.mcard span{opacity:0;transition:opacity .15s}
+.mcard.up{background:var(--ink);transform:scale(.96)}
+.mcard.up span{opacity:1}
+.mcard[data-p="0"]{--pc:var(--p1)}
+.mcard[data-p="1"]{--pc:var(--p2)}
+.mcard.done{background:color-mix(in srgb,var(--pc) 35%,var(--ink));border-color:var(--pc);transform:none}
+
+/* XOX */
+.xox{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px;background:var(--line);border-radius:14px;box-sizing:border-box}
+.xc{aspect-ratio:1;border:0;border-radius:10px;background:var(--night);font-family:var(--display);font-size:clamp(40px,15vw,78px);line-height:1;color:var(--pc);cursor:pointer;padding:0}
+.xc[data-p="0"]{--pc:var(--p1)}
+.xc[data-p="1"]{--pc:var(--p2)}
+.xc.hl{background:color-mix(in srgb,var(--pc) 30%,var(--night))}
+
 /* ---------- Overlays ---------- */
 .overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,10,22,.82);padding:16px}
 .res{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 22px;width:min(100%,360px);box-sizing:border-box;display:grid;gap:12px;text-align:center}
@@ -596,13 +630,260 @@ function dortbag(stage, end){
   return () => { t.clear(); window.removeEventListener('resize', size); };
 }
 
+const shuffle = a => { for(let i = a.length - 1; i > 0; i--){ const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* Layout shared by the turn-based board games: one score strip per player around a board */
+function turnUI(stage, inner){
+  stage.className = 'stage';
+  const strip = i => `<div class="strip" data-p="${i}"><div class="hin${flipCls(i)}"><span class="pname">${esc(state.names[i])}</span><b class="tsc">0</b><span class="turn"></span></div></div>`;
+  stage.innerHTML = strip(0) + `<div class="board-wrap">${inner}</div>` + strip(1);
+  const strips = [...stage.querySelectorAll('.strip')];
+  return {
+    wrap: stage.querySelector('.board-wrap'),
+    paint(turn, msg){
+      strips.forEach((s, i) => {
+        s.classList.toggle('on', turn === i);
+        s.querySelector('.turn').textContent = msg ? msg[i] : (i === turn ? 'Sıra sende' : 'Rakibin oynuyor');
+      });
+    },
+    score(sc){ strips.forEach((s, i) => { s.querySelector('.tsc').textContent = sc[i]; }); }
+  };
+}
+function fitBoard(wrap, el, ratio, max){
+  const fit = () => {
+    const b = wrap.getBoundingClientRect();
+    el.style.width = Math.max(160, Math.min(b.width - 112, (b.height - 20) * ratio, max)) + 'px';
+  };
+  window.addEventListener('resize', fit); fit();
+  return () => window.removeEventListener('resize', fit);
+}
+
+/* ---------- 6. Matematik ---------- */
+function mat(stage, end){
+  const ui = split(stage, { title: 'Matematik · 7 puan', extra: '<div class="q"></div><div class="opts"></div>' });
+  const qs = [...stage.querySelectorAll('.q')], ops = [...stage.querySelectorAll('.opts')];
+  const t = timers(), TARGET = 7, sc = [0, 0];
+  let cur = null, locked = [false, false], live = false;
+  function gen(){
+    const hard = sc[0] + sc[1] >= 4, kind = hard ? rand(3) : rand(2);
+    let a, b, ans, txt;
+    if(kind === 0){ a = 2 + rand(hard ? 40 : 15); b = 2 + rand(hard ? 40 : 15); ans = a + b; txt = `${a} + ${b}`; }
+    else if(kind === 1){ a = 6 + rand(hard ? 50 : 20); b = 1 + rand(a - 1); ans = a - b; txt = `${a} − ${b}`; }
+    else{ a = 2 + rand(8); b = 2 + rand(8); ans = a * b; txt = `${a} × ${b}`; }
+    const set = new Set([ans]);
+    while(set.size < 3){ const v = ans + (1 + rand(kind === 2 ? 6 : 10)) * (Math.random() < 0.5 ? -1 : 1); if(v >= 0) set.add(v); }
+    return { txt, ans, opts: [...set] };
+  }
+  function ask(){
+    cur = gen(); locked = [false, false];
+    ui.both('', '', '');
+    qs.forEach(q => { q.textContent = cur.txt + ' = ?'; });
+    ops.forEach(o => { o.innerHTML = shuffle([...cur.opts]).map(v => `<button class="opt" type="button" data-v="${v}">${v}</button>`).join(''); });
+    live = true;
+  }
+  ops.forEach((o, i) => o.addEventListener('pointerdown', e => {
+    const b = e.target.closest('.opt');
+    if(!b || !live || locked[i]) return;
+    e.preventDefault(); e.stopPropagation();
+    if(+b.dataset.v === cur.ans){
+      live = false; sc[i]++; ui.score(sc); buzz(40);
+      b.classList.add('right');
+      ui.set(i, '+1', 'Doğru', 'win');
+      ui.set(1 - i, String(cur.ans), 'Doğru cevap buydu', 'lose');
+      if(sc[i] >= TARGET) t.after(1000, () => end(i, sc.join(' – ')));
+      else t.after(1200, ask);
+    }else{
+      locked[i] = true; buzz([30, 40, 30]);
+      b.classList.add('wrong');
+      ui.set(i, 'Yanlış', 'Bu soruda bekle', 'bad');
+      if(locked[0] && locked[1]){
+        live = false;
+        ui.both(String(cur.ans), 'İkiniz de bilemediniz', '');
+        t.after(1400, ask);
+      }
+    }
+  }));
+  ui.ready('Soru ikinize aynı anda gelir. Doğru cevaba ilk dokunan +1 alır. Yanlış dokunan o soruda bekler.', () => t.after(400, ask));
+  return () => t.clear();
+}
+
+/* ---------- 7. Hedef Avı ---------- */
+function hedef(stage, end){
+  const ui = split(stage, { title: 'Hedef Avı · 15 isabet' });
+  ui.halves.forEach(h => h.insertAdjacentHTML('beforeend', '<div class="tlayer"><div class="tgt" hidden></div></div>'));
+  const tg = ui.halves.map(h => h.querySelector('.tgt'));
+  const SEQ = Array.from({ length: 60 }, () => [12 + Math.random() * 76, 14 + Math.random() * 72]);
+  const t = timers(), TARGET = 15, sc = [0, 0], idx = [0, 0];
+  let live = false;
+  function place(i){
+    let [x, y] = SEQ[idx[i] % SEQ.length];
+    if(i === 0 && state.face){ x = 100 - x; y = 100 - y; }
+    const s = Math.max(44, 80 - sc[i] * 2.4), el = tg[i];
+    el.style.left = x + '%'; el.style.top = y + '%';
+    el.style.width = el.style.height = s + 'px';
+    el.hidden = false;
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  }
+  ui.halves.forEach((h, i) => h.addEventListener('pointerdown', e => {
+    if(!live) return;
+    if(e.target.closest('.tgt')){
+      sc[i]++; idx[i]++; ui.score(sc); buzz(12);
+      if(sc[i] >= TARGET){
+        live = false; tg.forEach(x => { x.hidden = true; });
+        ui.set(i, 'Kazandın', '', 'win'); ui.set(1 - i, 'Kaybettin', '', 'lose');
+        t.after(1100, () => end(i, sc.join(' – ')));
+        return;
+      }
+      ui.set(i, String(sc[i]), '', '');
+      place(i);
+    }else{
+      sc[i] = Math.max(0, sc[i] - 1); ui.score(sc); buzz([20, 30, 20]);
+      ui.set(i, String(sc[i]), 'Iska! −1', 'bad');
+      t.after(300, () => { if(live) ui.set(i, String(sc[i]), '', ''); });
+    }
+  }));
+  ui.ready('Kendi yarında beliren daireye dokun. 15 isabete ilk ulaşan kazanır. Boşluğa dokunursan −1.', () => {
+    ui.countdown(t, () => { ui.both('0', '', ''); live = true; place(0); place(1); });
+  });
+  return () => t.clear();
+}
+
+/* ---------- 8. Saniye Tahmini ---------- */
+function saniye(stage, end){
+  const ui = split(stage, { title: 'Saniye · 5 turda 3' });
+  const t = timers(), sc = [0, 0];
+  let target = 10, t0 = 0, res = [null, null], live = false, raf = 0;
+  const fmt = v => v.toFixed(2).replace('.', ',');
+  function round(){
+    target = 5 + rand(8); res = [null, null]; live = false;
+    ui.both(target + ' sn', 'Sayaç başlayınca içinden say', '');
+    t.after(1800, () => ui.countdown(t, go));
+  }
+  function go(){
+    t0 = performance.now(); live = true; buzz(25); tick();
+    t.after(target * 1000 + 8000, () => { if(live) finishRound(); });
+  }
+  function tick(){
+    if(!live) return;
+    const el = (performance.now() - t0) / 1000;
+    [0, 1].forEach(i => { if(res[i] == null) ui.set(i, el < 2.5 ? el.toFixed(1).replace('.', ',') : '?', target + ' saniye dolunca dokun', ''); });
+    raf = requestAnimationFrame(tick);
+  }
+  function finishRound(){
+    live = false; cancelAnimationFrame(raf);
+    const d = res.map(v => v == null ? Infinity : Math.abs(v - target));
+    const w = d[0] < d[1] ? 0 : d[1] < d[0] ? 1 : -1;
+    [0, 1].forEach(i => {
+      const big = res[i] == null ? 'Basmadın' : fmt(res[i]) + ' sn';
+      const small = res[i] == null ? '' : (res[i] >= target ? '+' : '−') + fmt(Math.abs(res[i] - target)) + ' sn fark';
+      ui.set(i, big, small, w === -1 ? '' : (w === i ? 'win' : 'lose'));
+    });
+    if(w >= 0){ sc[w]++; ui.score(sc); }
+    buzz(60);
+    if(sc[0] >= 3 || sc[1] >= 3){ const W = sc[0] > sc[1] ? 0 : 1; t.after(2400, () => end(W, sc.join(' – ') + ' tur')); }
+    else t.after(2800, round);
+  }
+  ui.ready('Ekranda bir süre yazar. Sayaç birkaç saniye sonra gizlenir. Sürenin dolduğunu düşündüğün an kendi yarına dokun. Hedefe en yakın olan turu alır.', () => {
+    ui.onTap(i => {
+      if(!live || res[i] != null) return;
+      res[i] = (performance.now() - t0) / 1000; buzz(15);
+      ui.set(i, 'Tamam', 'Rakip bekleniyor…', 'ready');
+      if(res[0] != null && res[1] != null) finishRound();
+    });
+    round();
+  });
+  return () => { live = false; cancelAnimationFrame(raf); t.clear(); };
+}
+
+/* ---------- 9. Hafıza ---------- */
+const SYMS = ['🚌', '🍉', '⚽', '🎧', '🌙', '🍕', '🐱', '🚲', '🎈', '⭐'];
+function hafiza(stage, end){
+  const t = timers(), deck = shuffle([...SYMS, ...SYMS]), sc = [0, 0];
+  const ui = turnUI(stage, `<div class="mem" aria-label="Hafıza kartları">${deck.map((s, k) => `<button class="mcard" type="button" data-k="${k}" aria-label="Kart ${k + 1}"><span>${s}</span></button>`).join('')}</div>`);
+  const grid = stage.querySelector('.mem');
+  const unfit = fitBoard(ui.wrap, grid, 4 / 5, 460);
+  let turn = rand(2), open = [], lock = false, found = 0;
+  grid.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const c = e.target.closest('.mcard');
+    if(!c || lock || c.classList.contains('up')) return;
+    c.classList.add('up'); open.push(c); buzz(10);
+    if(open.length < 2) return;
+    lock = true;
+    const [a, b] = open;
+    if(deck[a.dataset.k] === deck[b.dataset.k]){
+      a.dataset.p = b.dataset.p = turn;
+      a.classList.add('done'); b.classList.add('done');
+      sc[turn]++; found++; open = []; ui.score(sc); buzz(40);
+      if(found === SYMS.length){
+        const w = sc[0] === sc[1] ? -1 : (sc[0] > sc[1] ? 0 : 1);
+        ui.paint(w, w === -1 ? ['Berabere', 'Berabere'] : [0, 1].map(i => i === w ? 'Kazandın' : 'Kaybettin'));
+        t.after(1300, () => end(w, sc.join(' – ') + ' çift'));
+      }else{
+        lock = false;
+        ui.paint(turn, [0, 1].map(i => i === turn ? 'Buldun, yine sen' : 'Rakip çift buldu'));
+      }
+    }else{
+      t.after(950, () => {
+        a.classList.remove('up'); b.classList.remove('up');
+        open = []; turn = 1 - turn; lock = false; ui.paint(turn);
+      });
+    }
+  });
+  ui.paint(turn);
+  return () => { t.clear(); unfit(); };
+}
+
+/* ---------- 10. XOX ---------- */
+function xox(stage, end){
+  const t = timers(), sc = [0, 0], TARGET = 3, M = ['X', 'O'];
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const ui = turnUI(stage, `<div class="xox" aria-label="XOX tahtası">${'<button class="xc" type="button"></button>'.repeat(9)}</div>`);
+  const grid = stage.querySelector('.xox'), cells = [...grid.children];
+  const unfit = fitBoard(ui.wrap, grid, 1, 420);
+  let starter = rand(2), turn = 0, g = [], over = false;
+  const paintTurn = () => ui.paint(turn, [0, 1].map(i => (i === turn ? 'Sıra sende · ' : 'Rakibin oynuyor · ') + M[i]));
+  function round(){
+    g = Array(9).fill(-1); over = false; turn = starter; starter = 1 - starter;
+    cells.forEach(c => { c.textContent = ''; c.className = 'xc'; delete c.dataset.p; });
+    paintTurn();
+  }
+  grid.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const c = e.target.closest('.xc'), k = cells.indexOf(c);
+    if(!c || over || g[k] !== -1) return;
+    g[k] = turn; c.textContent = M[turn]; c.dataset.p = turn; buzz(12);
+    const L = LINES.find(l => l.every(x => g[x] === turn));
+    if(L){
+      over = true; L.forEach(x => cells[x].classList.add('hl'));
+      sc[turn]++; ui.score(sc); buzz(60);
+      const w = turn;
+      ui.paint(w, [0, 1].map(i => i === w ? 'Turu aldın' : 'Turu kaybettin'));
+      if(sc[w] >= TARGET) t.after(1300, () => end(w, sc.join(' – ')));
+      else t.after(1500, round);
+    }else if(g.every(v => v !== -1)){
+      over = true; ui.paint(-1, ['Berabere', 'Berabere']);
+      t.after(1300, round);
+    }else{
+      turn = 1 - turn; paintTurn();
+    }
+  });
+  round();
+  return () => { t.clear(); unfit(); };
+}
+
 /* ---------- Catalogue & flow ---------- */
 const GAMES = [
   { key: 'refleks', name: 'Refleks', desc: 'Ekran sarıya dönünce ilk dokunan kazanır. Erken dokunan yanar.', min: '1', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: refleks },
   { key: 'halat', name: 'Halat Çekme', desc: 'Kendi yarına çılgınca dokun, çizgiyi rakibin ucuna it.', min: '1', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: halat },
   { key: 'renk', name: 'Renk Tuzağı', desc: 'Yazı ile rengi aynı olunca bas. Tuzağa düşen puan kaybeder.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: renk },
   { key: 'hokey', name: 'Hava Hokeyi', desc: 'Parmağınla raketi sürükle, pulu rakibin kalesine sok. 5 gol.', min: '3', tags: [['warn', 'Sarsıntıda zorlaşır'], ['', 'Aynı anda']], start: hokey },
-  { key: 'dortbag', name: 'Dört Bağla', desc: 'Sırayla taş bırakın, yan yana dört taşı ilk dizen kazanır.', min: '4', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: dortbag }
+  { key: 'mat', name: 'Matematik', desc: 'Aynı işlem ikinize birden gelir. Doğru cevaba ilk dokunan kazanır.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: mat },
+  { key: 'saniye', name: 'Saniye Tahmini', desc: 'Sayaç gizlenir, süreyi içinden say. Hedefe en yakın basan turu alır.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: saniye },
+  { key: 'hedef', name: 'Hedef Avı', desc: 'Kendi yarında beliren hedeflere dokun. Iskalarsan puan gider.', min: '2', tags: [['warn', 'Sarsıntıda zorlaşır'], ['', 'Aynı anda']], start: hedef },
+  { key: 'dortbag', name: 'Dört Bağla', desc: 'Sırayla taş bırakın, yan yana dört taşı ilk dizen kazanır.', min: '4', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: dortbag },
+  { key: 'hafiza', name: 'Hafıza', desc: 'Kartları ikişer ikişer çevirin. Çifti bulan bir daha oynar.', min: '4', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: hafiza },
+  { key: 'xox', name: 'XOX', desc: 'Bildiğimiz XOX, üç turu ilk alan kazanır. Başlayan her tur değişir.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: xox }
 ];
 let current = null;
 
