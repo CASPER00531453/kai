@@ -159,6 +159,38 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .xc[data-p="1"]{--pc:var(--p2)}
 .xc.hl{background:color-mix(in srgb,var(--pc) 30%,var(--night))}
 
+/* Taş Kağıt Makas */
+.opt.tk{font-size:17px;min-width:86px;padding:14px 10px}
+
+/* Sayı Avı */
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:min(78vw,calc(50vh - 130px),340px);pointer-events:auto}
+.sgrid:empty{display:none}
+.snum{aspect-ratio:1;font-family:var(--display);font-size:clamp(18px,5.5vw,26px);border-radius:10px;border:1px solid var(--line);background:var(--ink);color:var(--text);cursor:pointer;padding:0;font-variant-numeric:tabular-nums;transition:opacity .12s,background .12s}
+.snum.got{opacity:.2}
+.snum.no{background:var(--bad);color:var(--ink)}
+.veil .snum{color:transparent}
+
+/* Balon */
+.balloon{position:relative;border-radius:50% 50% 47% 47% / 55% 55% 45% 45%;background:var(--pc);background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--text) 45%,var(--pc)),var(--pc) 60%);transition:width .12s,height .12s;margin-bottom:8px}
+.balloon::after{content:'';position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);border:7px solid transparent;border-top-color:var(--pc)}
+
+/* Kutu Kapmaca */
+.kgrid{display:grid;grid-template-columns:repeat(var(--n),22px 1fr) 22px;grid-template-rows:repeat(var(--n),22px 1fr) 22px;aspect-ratio:1;box-sizing:border-box}
+.kdot{background:var(--text);border-radius:50%;margin:5px}
+.kl{border:0;padding:0;background:transparent;position:relative;cursor:pointer}
+.kl::after{content:'';position:absolute;background:var(--line);border-radius:3px}
+.kh::after{left:2px;right:2px;top:50%;height:4px;margin-top:-2px}
+.kv::after{top:2px;bottom:2px;left:50%;width:4px;margin-left:-2px}
+.kl[data-p="0"]{--pc:var(--p1)}
+.kl[data-p="1"]{--pc:var(--p2)}
+.kl.on::after{background:var(--pc)}
+.kh.on::after{height:6px;margin-top:-3px}
+.kv.on::after{width:6px;margin-left:-3px}
+.kl.last::after{box-shadow:0 0 0 2px var(--text)}
+.kbox{margin:3px;border-radius:6px;transition:background .2s}
+.kbox[data-p="0"]{background:color-mix(in srgb,var(--p1) 45%,transparent)}
+.kbox[data-p="1"]{background:color-mix(in srgb,var(--p2) 45%,transparent)}
+
 /* ---------- Overlays ---------- */
 .overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,10,22,.82);padding:16px}
 .res{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 22px;width:min(100%,360px);box-sizing:border-box;display:grid;gap:12px;text-align:center}
@@ -872,17 +904,307 @@ function xox(stage, end){
   return () => { t.clear(); unfit(); };
 }
 
+/* ---------- 11. Taş Kağıt Makas ---------- */
+const TKM = ['TAŞ', 'KAĞIT', 'MAKAS'];
+function tkm(stage, end){
+  const ui = split(stage, { title: 'Taş Kağıt Makas', extra: '<div class="opts"></div>' });
+  const ops = [...stage.querySelectorAll('.opts')];
+  const t = timers(), TARGET = 3, sc = [0, 0];
+  let pick = [null, null], live = false;
+  function round(){
+    pick = [null, null]; live = true;
+    ops.forEach(o => { o.innerHTML = shuffle([0, 1, 2]).map(v => `<button class="opt tk" type="button" data-v="${v}">${TKM[v]}</button>`).join(''); });
+    ui.both('Seç', 'Düğmelerin yeri her tur karışır, rakibin hangisine bastığını anlayamaz.', '');
+  }
+  function reveal(){
+    const res = (pick[0] - pick[1] + 3) % 3;
+    const w = res === 0 ? -1 : res === 1 ? 0 : 1;
+    [0, 1].forEach(i => ui.set(i, TKM[pick[i]], 'Rakip: ' + TKM[pick[1 - i]] + ' · ' + (w === -1 ? 'Berabere' : w === i ? 'Kazandın' : 'Kaybettin'), w === -1 ? '' : (w === i ? 'win' : 'lose')));
+    if(w >= 0){ sc[w]++; ui.score(sc); }
+    buzz(50);
+    if(w >= 0 && sc[w] >= TARGET) t.after(1800, () => end(w, sc.join(' – ')));
+    else t.after(2300, round);
+  }
+  ops.forEach((o, i) => o.addEventListener('pointerdown', e => {
+    const b = e.target.closest('.opt');
+    if(!b || !live || pick[i] != null) return;
+    e.preventDefault(); e.stopPropagation();
+    pick[i] = +b.dataset.v; o.innerHTML = ''; buzz(15);
+    ui.set(i, 'Seçtin', 'Rakip bekleniyor…', 'ready');
+    if(pick[0] != null && pick[1] != null){ live = false; t.after(350, reveal); }
+  }));
+  ui.ready('Taş makası, makas kağıdı, kağıt taşı yener. İkiniz de seçince sonuç açılır. 3 puanı ilk alan kazanır.', round);
+  return () => t.clear();
+}
+
+/* ---------- 12. Sayı Avı ---------- */
+function sayi(stage, end){
+  const N = 16, ui = split(stage, { title: 'Sayı Avı · 3 turda 2', extra: '<div class="sgrid"></div>' });
+  const grids = [...stage.querySelectorAll('.sgrid')];
+  const t = timers(), rounds = [0, 0];
+  let next = [1, 1], live = false;
+  function round(){
+    next = [1, 1]; live = false;
+    grids.forEach(g => {
+      g.innerHTML = shuffle(Array.from({ length: N }, (_, k) => k + 1)).map(v => `<button class="snum" type="button" data-v="${v}">${v}</button>`).join('');
+      g.classList.add('veil');
+    });
+    ui.countdown(t, () => {
+      grids.forEach(g => g.classList.remove('veil'));
+      ui.both('', 'Sıradaki: 1', ''); live = true; buzz(25);
+    });
+  }
+  grids.forEach((g, i) => g.addEventListener('pointerdown', e => {
+    const b = e.target.closest('.snum');
+    if(!b || !live) return;
+    e.preventDefault(); e.stopPropagation();
+    if(+b.dataset.v !== next[i]){
+      b.classList.add('no'); buzz(30);
+      t.after(250, () => b.classList.remove('no'));
+      return;
+    }
+    b.classList.add('got'); next[i]++; buzz(8);
+    if(next[i] > N){
+      live = false; rounds[i]++; ui.score(rounds); buzz(80);
+      ui.set(i, 'Bitirdin', '', 'win'); ui.set(1 - i, 'Geç kaldın', '', 'lose');
+      if(rounds[i] >= 2) t.after(1400, () => end(i, rounds.join(' – ') + ' tur'));
+      else t.after(1900, round);
+    }else ui.set(i, '', 'Sıradaki: ' + next[i], '');
+  }));
+  ui.ready('Kendi tablonda 1’den 16’ya kadar sayılara sırayla dokun. İlk bitiren turu alır.', round);
+  return () => t.clear();
+}
+
+/* ---------- 13. Işık Yılanı ---------- */
+function isik(stage, end){
+  stage.className = 'stage';
+  stage.innerHTML = '<canvas aria-label="Işık yılanı sahası"></canvas>';
+  const cv = stage.querySelector('canvas'), cx = cv.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const C = k => css.getPropertyValue(k).trim();
+  const col = { p: [C('--p1'), C('--p2')], panel: C('--panel'), line: C('--line'), text: C('--text'), go: C('--go'), bad: C('--bad'), font: C('--display') };
+  const COLS = 20, TARGET = 3, sc = [0, 0], t = timers(), VEC = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  const swipes = new Map();
+  let W = 0, H = 0, cell = 0, rows = 0, ox = 0, oy = 0, grid = [], S = [], phase = 'count', msg = ['', ''], crash = [], tickMs = 120;
+  function layout(){
+    const b = stage.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = b.width; H = b.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if(!rows) rows = Math.max(16, Math.floor(H / (W / COLS)));
+    cell = Math.min(W / COLS, H / rows);
+    ox = (W - cell * COLS) / 2; oy = (H - cell * rows) / 2;
+  }
+  function text(str, x, y, size, color, flip){
+    cx.save(); cx.translate(x, y); if(flip) cx.rotate(Math.PI);
+    cx.fillStyle = color; cx.font = `${size}px ${col.font}`; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(str, 0, 0); cx.restore();
+  }
+  function draw(){
+    cx.fillStyle = col.panel; cx.fillRect(0, 0, W, H);
+    cx.strokeStyle = col.line; cx.lineWidth = 2;
+    cx.strokeRect(ox + 1, oy + 1, cell * COLS - 2, cell * rows - 2);
+    cx.globalAlpha = 0.3;
+    cx.beginPath(); cx.moveTo(ox, H / 2); cx.lineTo(ox + cell * COLS, H / 2); cx.stroke();
+    text(String(sc[0]), W - 36, H / 2 - 36, 40, col.p[0], state.face);
+    text(String(sc[1]), W - 36, H / 2 + 36, 40, col.p[1], false);
+    cx.globalAlpha = 1;
+    for(let k = 0; k < grid.length; k++){
+      if(grid[k] < 0) continue;
+      cx.fillStyle = col.p[grid[k]]; cx.globalAlpha = 0.75;
+      cx.fillRect(ox + (k % COLS) * cell + 1, oy + Math.floor(k / COLS) * cell + 1, cell - 2, cell - 2);
+    }
+    cx.globalAlpha = 1;
+    S.forEach((s, i) => {
+      cx.fillStyle = col.p[i]; cx.fillRect(ox + s.x * cell, oy + s.y * cell, cell, cell);
+      cx.strokeStyle = col.text; cx.lineWidth = 2; cx.strokeRect(ox + s.x * cell + 1, oy + s.y * cell + 1, cell - 2, cell - 2);
+    });
+    crash.forEach(h => {
+      const x = ox + (h.x + 0.5) * cell, y = oy + (h.y + 0.5) * cell;
+      cx.strokeStyle = col.bad; cx.lineWidth = 4;
+      cx.beginPath(); cx.moveTo(x - cell, y - cell); cx.lineTo(x + cell, y + cell); cx.moveTo(x + cell, y - cell); cx.lineTo(x - cell, y + cell); cx.stroke();
+    });
+    const fs = m => Math.min(30, (W - 32) / (m.length * 0.78));
+    if(msg[0]) text(msg[0], W / 2, H * 0.3, fs(msg[0]), col.go, state.face);
+    if(msg[1]) text(msg[1], W / 2, H * 0.7, fs(msg[1]), col.go, false);
+  }
+  function round(){
+    grid = Array(COLS * rows).fill(-1);
+    S = [{ x: 5, y: 1, d: 2, q: [] }, { x: COLS - 6, y: rows - 2, d: 0, q: [] }];
+    S.forEach((s, i) => { grid[s.y * COLS + s.x] = i; });
+    crash = []; tickMs = 120; phase = 'count';
+    let n = 3;
+    const tick = () => {
+      if(n === 0){ msg = ['', '']; phase = 'run'; buzz(25); draw(); t.after(tickMs, step); return; }
+      msg = [String(n), String(n)]; draw(); n--; t.after(700, tick);
+    };
+    msg = ['Kaydırarak yön ver', 'Kaydırarak yön ver']; draw();
+    t.after(1200, tick);
+  }
+  function step(){
+    if(phase !== 'run') return;
+    S.forEach(s => { if(s.q.length) s.d = s.q.shift(); });
+    const nh = S.map(s => ({ x: s.x + VEC[s.d][0], y: s.y + VEC[s.d][1] }));
+    const dead = nh.map(h => h.x < 0 || h.y < 0 || h.x >= COLS || h.y >= rows || grid[h.y * COLS + h.x] !== -1);
+    if(nh[0].x === nh[1].x && nh[0].y === nh[1].y){ dead[0] = dead[1] = true; }
+    if(dead[0] || dead[1]){
+      phase = 'end'; buzz(150);
+      crash = nh.filter((h, i) => dead[i]);
+      const w = dead[0] && dead[1] ? -1 : dead[0] ? 1 : 0;
+      if(w >= 0){ sc[w]++; msg = [0, 1].map(i => i === w ? 'Turu aldın' : 'Çarptın'); }
+      else msg = ['Berabere', 'Berabere'];
+      draw();
+      if(w >= 0 && sc[w] >= TARGET) t.after(1600, () => end(w, sc.join(' – ') + ' tur'));
+      else t.after(2000, round);
+      return;
+    }
+    nh.forEach((h, i) => { S[i].x = h.x; S[i].y = h.y; grid[h.y * COLS + h.x] = i; });
+    tickMs = Math.max(65, tickMs - 0.7);
+    draw();
+    t.after(tickMs, step);
+  }
+  function turn(i, d){
+    const s = S[i];
+    if(!s || phase === 'end') return;
+    const lastD = s.q.length ? s.q[s.q.length - 1] : s.d;
+    if(d === lastD || (d + 2) % 4 === lastD || s.q.length >= 2) return;
+    s.q.push(d);
+  }
+  const onDown = e => {
+    e.preventDefault();
+    const b = cv.getBoundingClientRect();
+    swipes.set(e.pointerId, { i: e.clientY - b.top < H / 2 ? 0 : 1, x: e.clientX, y: e.clientY });
+    try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  };
+  const onMove = e => {
+    const sw = swipes.get(e.pointerId);
+    if(!sw) return;
+    const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+    if(Math.hypot(dx, dy) < 22) return;
+    let d = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0);
+    if(sw.i === 0 && state.face) d = (d + 2) % 4;
+    turn(sw.i, d);
+    sw.x = e.clientX; sw.y = e.clientY;
+  };
+  const onUp = e => swipes.delete(e.pointerId);
+  cv.addEventListener('pointerdown', onDown);
+  cv.addEventListener('pointermove', onMove);
+  cv.addEventListener('pointerup', onUp);
+  cv.addEventListener('pointercancel', onUp);
+  const onResize = () => { layout(); draw(); };
+  window.addEventListener('resize', onResize);
+  layout(); round();
+  return () => { t.clear(); window.removeEventListener('resize', onResize); };
+}
+
+/* ---------- 14. Balon ---------- */
+function balon(stage, end){
+  const ui = split(stage, { title: 'Balon · 25 puan', extra: '<div class="balloon" hidden></div><div class="opts"></div>' });
+  const balls = [...stage.querySelectorAll('.balloon')], ops = [...stage.querySelectorAll('.opts')];
+  const t = timers(), TARGET = 25, sc = [0, 0];
+  let turn = rand(2), pumps = 0, popAt = 0, busy = false, first = true;
+  function startTurn(){ pumps = 0; popAt = 2 + rand(11); busy = false; render(); }
+  function render(){
+    [0, 1].forEach(i => {
+      const me = i === turn;
+      balls[i].hidden = !me;
+      ops[i].innerHTML = me ? '<button class="opt tk" type="button" data-a="pump">Şişir</button><button class="opt tk" type="button" data-a="bank">Kasaya at</button>' : '';
+      if(me){
+        const s = 54 + pumps * 11;
+        balls[i].style.width = s + 'px'; balls[i].style.height = Math.round(s * 1.12) + 'px';
+        ui.set(i, '+' + pumps, pumps ? 'Kasaya atarsan puan senin. Patlarsa bu turdakiler gider.' : (first ? 'Her şişirme +1 puan ama balon ne zaman patlar belli değil. 25 puana ilk ulaşan kazanır.' : 'Her şişirme +1 puan.'), 'ready');
+      }else ui.set(i, pumps ? 'Rakip +' + pumps : 'Rakip oynuyor', '', 'lose');
+    });
+  }
+  function pass(){ turn = 1 - turn; first = false; startTurn(); }
+  ops.forEach((o, i) => o.addEventListener('pointerdown', e => {
+    const b = e.target.closest('.opt');
+    if(!b || busy || i !== turn) return;
+    e.preventDefault(); e.stopPropagation();
+    if(b.dataset.a === 'pump'){
+      pumps++; buzz(10);
+      if(pumps < popAt){ render(); return; }
+      busy = true; balls[i].hidden = true; ops[i].innerHTML = ''; buzz([60, 40, 60]);
+      ui.set(i, 'PATLADI', pumps > 1 ? (pumps - 1) + ' puan gitti' : '', 'bad');
+      ui.set(1 - i, 'Rakibin balonu patladı', 'Sıra sana geçiyor', '');
+      t.after(1500, pass);
+    }else{
+      if(!pumps) return;
+      busy = true; sc[i] += pumps; ui.score(sc); ops[i].innerHTML = ''; balls[i].hidden = true; buzz(40);
+      ui.set(i, '+' + pumps, 'Kasaya attın', 'win');
+      ui.set(1 - i, 'Sıra sana geçiyor', '', '');
+      if(sc[i] >= TARGET) t.after(1200, () => end(i, sc.join(' – ')));
+      else t.after(1300, pass);
+    }
+  }));
+  startTurn();
+  return () => t.clear();
+}
+
+/* ---------- 15. Kutu Kapmaca ---------- */
+function kutu(stage, end){
+  const n = 4, t = timers(), sc = [0, 0];
+  const Hl = Array.from({ length: n + 1 }, () => Array(n).fill(-1));
+  const Vl = Array.from({ length: n }, () => Array(n + 1).fill(-1));
+  const B = Array.from({ length: n }, () => Array(n).fill(-1));
+  let turn = rand(2), over = false, owned = 0, last = null, html = '';
+  for(let i = 0; i <= 2 * n; i++) for(let j = 0; j <= 2 * n; j++){
+    if(i % 2 === 0 && j % 2 === 0) html += '<i class="kdot"></i>';
+    else if(i % 2 === 0) html += `<button class="kl kh" type="button" data-t="h" data-r="${i / 2}" data-c="${(j - 1) / 2}" aria-label="Yatay çizgi"></button>`;
+    else if(j % 2 === 0) html += `<button class="kl kv" type="button" data-t="v" data-r="${(i - 1) / 2}" data-c="${j / 2}" aria-label="Dikey çizgi"></button>`;
+    else html += `<div class="kbox" data-r="${(i - 1) / 2}" data-c="${(j - 1) / 2}"></div>`;
+  }
+  const ui = turnUI(stage, `<div class="kgrid" style="--n:${n}">${html}</div>`);
+  const grid = stage.querySelector('.kgrid');
+  const unfit = fitBoard(ui.wrap, grid, 1, 440);
+  const full = (r, c) => Hl[r][c] >= 0 && Hl[r + 1][c] >= 0 && Vl[r][c] >= 0 && Vl[r][c + 1] >= 0;
+  grid.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const b = e.target.closest('.kl');
+    if(!b || over) return;
+    const r = +b.dataset.r, c = +b.dataset.c, horiz = b.dataset.t === 'h', arr = horiz ? Hl : Vl;
+    if(arr[r][c] >= 0) return;
+    arr[r][c] = turn; b.dataset.p = turn; b.classList.add('on'); buzz(10);
+    if(last) last.classList.remove('last');
+    b.classList.add('last'); last = b;
+    const near = horiz ? [[r - 1, c], [r, c]] : [[r, c - 1], [r, c]];
+    let got = 0;
+    near.forEach(([y, x]) => {
+      if(y < 0 || x < 0 || y >= n || x >= n || B[y][x] >= 0 || !full(y, x)) return;
+      B[y][x] = turn; grid.querySelector(`.kbox[data-r="${y}"][data-c="${x}"]`).dataset.p = turn; got++;
+    });
+    if(got){ sc[turn] += got; owned += got; ui.score(sc); buzz(40); }
+    if(owned === n * n){
+      over = true;
+      const w = sc[0] === sc[1] ? -1 : (sc[0] > sc[1] ? 0 : 1);
+      ui.paint(w, w === -1 ? ['Berabere', 'Berabere'] : [0, 1].map(i => i === w ? 'Kazandın' : 'Kaybettin'));
+      t.after(1400, () => end(w, sc.join(' – ') + ' kutu'));
+    }else if(got){
+      ui.paint(turn, [0, 1].map(i => i === turn ? 'Kutuyu kaptın, yine sen' : 'Rakip kutu kaptı'));
+    }else{
+      turn = 1 - turn; ui.paint(turn);
+    }
+  });
+  ui.paint(turn, [0, 1].map(i => i === turn ? 'Sen başlıyorsun, bir çizgiye dokun' : 'Rakip başlıyor'));
+  return () => { t.clear(); unfit(); };
+}
+
 /* ---------- Catalogue & flow ---------- */
 const GAMES = [
   { key: 'refleks', name: 'Refleks', desc: 'Ekran sarıya dönünce ilk dokunan kazanır. Erken dokunan yanar.', min: '1', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: refleks },
   { key: 'halat', name: 'Halat Çekme', desc: 'Kendi yarına çılgınca dokun, çizgiyi rakibin ucuna it.', min: '1', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: halat },
   { key: 'renk', name: 'Renk Tuzağı', desc: 'Yazı ile rengi aynı olunca bas. Tuzağa düşen puan kaybeder.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: renk },
+  { key: 'tkm', name: 'Taş Kağıt Makas', desc: 'İkiniz de gizlice seçin, sonuç birlikte açılır. Düğmelerin yeri her tur karışır.', min: '1', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: tkm },
+  { key: 'sayi', name: 'Sayı Avı', desc: 'Karışık tablodaki 1’den 16’ya kadar sayılara sırayla dokun. İlk bitiren alır.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: sayi },
   { key: 'hokey', name: 'Hava Hokeyi', desc: 'Parmağınla raketi sürükle, pulu rakibin kalesine sok. 5 gol.', min: '3', tags: [['warn', 'Sarsıntıda zorlaşır'], ['', 'Aynı anda']], start: hokey },
+  { key: 'isik', name: 'Işık Yılanı', desc: 'Parmağını kaydırarak yön ver, arkanda iz bırak. Duvara ya da ize ilk çarpan kaybeder.', min: '3', tags: [['warn', 'Sarsıntıda zorlaşır'], ['', 'Aynı anda']], start: isik },
   { key: 'mat', name: 'Matematik', desc: 'Aynı işlem ikinize birden gelir. Doğru cevaba ilk dokunan kazanır.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: mat },
   { key: 'saniye', name: 'Saniye Tahmini', desc: 'Sayaç gizlenir, süreyi içinden say. Hedefe en yakın basan turu alır.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: saniye },
   { key: 'hedef', name: 'Hedef Avı', desc: 'Kendi yarında beliren hedeflere dokun. Iskalarsan puan gider.', min: '2', tags: [['warn', 'Sarsıntıda zorlaşır'], ['', 'Aynı anda']], start: hedef },
   { key: 'dortbag', name: 'Dört Bağla', desc: 'Sırayla taş bırakın, yan yana dört taşı ilk dizen kazanır.', min: '4', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: dortbag },
+  { key: 'balon', name: 'Balon', desc: 'Şişirdikçe puan biriktir, patlamadan kasaya at. Şans ile cesaret oyunu.', min: '3', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: balon },
   { key: 'hafiza', name: 'Hafıza', desc: 'Kartları ikişer ikişer çevirin. Çifti bulan bir daha oynar.', min: '4', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: hafiza },
+  { key: 'kutu', name: 'Kutu Kapmaca', desc: 'Sırayla noktaları birleştirin. Kutunun son kenarını çizen kutuyu kapar ve bir daha oynar.', min: '5', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: kutu },
   { key: 'xox', name: 'XOX', desc: 'Bildiğimiz XOX, üç turu ilk alan kazanır. Başlayan her tur değişir.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: xox }
 ];
 let current = null;
