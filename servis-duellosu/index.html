@@ -191,6 +191,13 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .kbox[data-p="0"]{background:color-mix(in srgb,var(--p1) 45%,transparent)}
 .kbox[data-p="1"]{background:color-mix(in srgb,var(--p2) 45%,transparent)}
 
+/* Sıcak Patates */
+.bomb{font-size:clamp(56px,18vw,96px);line-height:1;animation:tick 1s ease-in-out infinite}
+@keyframes tick{50%{transform:scale(1.14)}}
+.pt{position:absolute;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;border:3px solid var(--text);background:var(--ink);color:var(--text);font-family:var(--display);font-size:26px;line-height:1;pointer-events:auto;cursor:pointer;padding:0;transition:background .1s}
+.pt.got{background:var(--ok);border-color:var(--ok);color:var(--ink)}
+.pt.no{background:var(--bad);border-color:var(--bad);color:var(--ink)}
+
 /* ---------- Overlays ---------- */
 .overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,10,22,.82);padding:16px}
 .res{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 22px;width:min(100%,360px);box-sizing:border-box;display:grid;gap:12px;text-align:center}
@@ -1189,6 +1196,71 @@ function kutu(stage, end){
   return () => { t.clear(); unfit(); };
 }
 
+/* ---------- 16. Sıcak Patates ---------- */
+function patates(stage, end){
+  const ui = split(stage, { title: 'Sıcak Patates · 3 puan', extra: '<div class="bomb" hidden>💣</div>' });
+  ui.halves.forEach(h => h.insertAdjacentHTML('beforeend', '<div class="tlayer"></div>'));
+  const layers = ui.halves.map(h => h.querySelector('.tlayer')), bombs = [...stage.querySelectorAll('.bomb')];
+  const t = timers(), TARGET = 3, sc = [0, 0];
+  let holder = rand(2), need = 1, live = false, t0 = 0, fuseEnd = 0, raf = 0, lastP = 0;
+  function deal(i){
+    const cells = shuffle([0, 1, 2, 3, 5, 6, 7, 8]).slice(0, 3);
+    layers[i].innerHTML = cells.map((c, k) => {
+      const x = 18 + (c % 3) * 32 + (Math.random() * 8 - 4), y = 20 + Math.floor(c / 3) * 30 + (Math.random() * 8 - 4);
+      return `<button class="pt" type="button" data-n="${k + 1}" style="left:${x}%;top:${y}%">${k + 1}</button>`;
+    }).join('');
+    need = 1;
+  }
+  function show(){
+    [0, 1].forEach(i => {
+      const me = i === holder;
+      bombs[i].hidden = !me;
+      if(me){ deal(i); ui.set(i, '', '1, 2, 3 sırayla dokun, bombayı at', 'ready'); }
+      else{ layers[i].innerHTML = ''; ui.set(i, '', 'Bomba rakipte', ''); }
+    });
+  }
+  function tick(){
+    if(!live) return;
+    const now = performance.now();
+    if(now >= fuseEnd){ boom(); return; }
+    const p = Math.max(0.2, 1 - (now - t0) / 1000 * 0.05);
+    if(Math.abs(p - lastP) > 0.04){ lastP = p; bombs.forEach(b => { b.style.animationDuration = p + 's'; }); }
+    raf = requestAnimationFrame(tick);
+  }
+  function boom(){
+    live = false; cancelAnimationFrame(raf);
+    layers.forEach(l => { l.innerHTML = ''; }); bombs.forEach(b => { b.hidden = true; });
+    const loser = holder, w = 1 - loser;
+    sc[w]++; ui.score(sc); buzz([200, 80, 200]);
+    ui.set(loser, 'BUM!', 'Bomba sende patladı', 'bad');
+    ui.set(w, '+1', 'Kurtuldun', 'win');
+    if(sc[w] >= TARGET) t.after(1800, () => end(w, sc.join(' – ')));
+    else t.after(2400, round);
+  }
+  function round(){
+    live = false;
+    ui.countdown(t, () => {
+      t0 = performance.now(); fuseEnd = t0 + (8 + Math.random() * 14) * 1000; lastP = 0;
+      live = true; buzz(25); show(); tick();
+    });
+  }
+  layers.forEach((l, i) => l.addEventListener('pointerdown', e => {
+    const b = e.target.closest('.pt');
+    if(!b || !live || i !== holder) return;
+    e.preventDefault(); e.stopPropagation();
+    if(+b.dataset.n === need){
+      b.classList.add('got'); need++; buzz(8);
+      if(need > 3){ holder = 1 - holder; buzz(20); show(); }
+    }else{
+      l.querySelectorAll('.pt').forEach(x => x.classList.remove('got'));
+      need = 1; buzz([30, 30]);
+      b.classList.add('no'); t.after(250, () => b.classList.remove('no'));
+    }
+  }));
+  ui.ready('Bomba kimdeyse 1, 2, 3 düğmelerine sırayla dokunup rakibe atar. Ne zaman patlayacağı belli değil, kimde patlarsa rakibi puan alır.', round);
+  return () => { live = false; cancelAnimationFrame(raf); t.clear(); };
+}
+
 /* ---------- Catalogue & flow ---------- */
 const GAMES = [
   { key: 'refleks', name: 'Refleks', desc: 'Ekran sarıya dönünce ilk dokunan kazanır. Erken dokunan yanar.', min: '1', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: refleks },
@@ -1201,6 +1273,7 @@ const GAMES = [
   { key: 'mat', name: 'Matematik', desc: 'Aynı işlem ikinize birden gelir. Doğru cevaba ilk dokunan kazanır.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: mat },
   { key: 'saniye', name: 'Saniye Tahmini', desc: 'Sayaç gizlenir, süreyi içinden say. Hedefe en yakın basan turu alır.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: saniye },
   { key: 'hedef', name: 'Hedef Avı', desc: 'Kendi yarında beliren hedeflere dokun. Iskalarsan puan gider.', min: '2', tags: [['warn', 'Sarsıntıda zorlaşır'], ['', 'Aynı anda']], start: hedef },
+  { key: 'patates', name: 'Sıcak Patates', desc: 'Bomba elden ele geçer. 1-2-3’e dokunup at, kimde patlarsa o kaybeder.', min: '2', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Aynı anda']], start: patates },
   { key: 'dortbag', name: 'Dört Bağla', desc: 'Sırayla taş bırakın, yan yana dört taşı ilk dizen kazanır.', min: '4', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: dortbag },
   { key: 'balon', name: 'Balon', desc: 'Şişirdikçe puan biriktir, patlamadan kasaya at. Şans ile cesaret oyunu.', min: '3', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: balon },
   { key: 'hafiza', name: 'Hafıza', desc: 'Kartları ikişer ikişer çevirin. Çifti bulan bir daha oynar.', min: '4', tags: [['ok', 'Sarsıntıya dayanıklı'], ['', 'Sırayla']], start: hafiza },
