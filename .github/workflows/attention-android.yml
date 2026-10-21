@@ -1,0 +1,38 @@
+name: Attention Android APK
+
+on:
+  push:
+    branches: ['**']
+    tags: ['attention-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: attention
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk Attention.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Attention-apk
+          path: attention/Attention.apk
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/attention-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: attention/Attention.apk

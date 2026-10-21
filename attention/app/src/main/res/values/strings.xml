@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Attention</string>
+    <string name="a11y_description">Attention, seçtiğin dikkat dağıtıcı uygulamalar açıldığında bunu algılar ve önüne kilit ekranı koyar. Ekran içeriğini okumaz, sadece hangi uygulamanın açıldığına bakar.</string>
+</resources>
