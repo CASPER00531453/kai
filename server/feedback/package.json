@@ -1,0 +1,9 @@
+{
+  "name": "kai-feedback",
+  "private": true,
+  "type": "module",
+  "description": "Ratings and wishes sent from Kai, kept until the developer's Kai picks them up.",
+  "dependencies": {
+    "@vercel/blob": "2.8.0"
+  }
+}

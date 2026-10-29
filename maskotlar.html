@@ -1,0 +1,218 @@
+<title>Kai maskot adayları</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Manrope:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a quiet dark stage like the island itself; fifteen equal cards, the mascots are the only colour. */
+  :root {
+    color-scheme: dark;
+    --bg: #0a0b0f;
+    --card: #13151b;
+    --line: #232733;
+    --ink: #f1f3f7;
+    --dim: #8d94a3;
+    --kai: #4db5ff;
+    --kai-soft: rgba(77, 181, 255, 0.14);
+    --pill: #000000;
+    --display: "Sora", "Segoe UI", system-ui, sans-serif;
+    --body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.55 var(--body); padding-inline: 20px; padding-block: 36px 110px; }
+  .wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+  h1 { font: 700 30px/1.15 var(--display); margin: 0; text-wrap: balance; }
+  .lead { margin: 8px 0 0; color: var(--dim); max-width: 62ch; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .bar span { color: var(--dim); font-size: 13px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
+  .seg button { border: 0; background: transparent; color: var(--dim); font: 600 13px var(--body); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--kai-soft); color: var(--kai); }
+  .seg button:focus-visible, .card:focus-visible, .copy:focus-visible { outline: 2px solid var(--kai); outline-offset: 2px; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); }
+  .card { text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 14px 16px; color: inherit; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .card:hover { border-color: #39404f; }
+  .card[aria-pressed="true"] { border-color: var(--kai); box-shadow: 0 0 0 3px var(--kai-soft); }
+  .head { display: flex; align-items: baseline; gap: 8px; }
+  .num { font: 600 12px var(--display); color: var(--dim); font-variant-numeric: tabular-nums; }
+  .name { font: 600 16px var(--display); }
+  .stage { display: grid; place-items: center; height: 148px; }
+  .pill { display: flex; align-items: center; gap: 8px; background: var(--pill); border: 1px solid #1c1f28; border-radius: 999px; padding: 5px 14px 5px 7px; width: fit-content; }
+  .pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--kai); }
+  .pill b { font: 600 12.5px var(--body); color: var(--kai); }
+  .note { margin: 0; color: var(--dim); font-size: 13px; line-height: 1.45; }
+  .pick { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px)); background: rgba(10, 11, 15, 0.92); border-top: 1px solid var(--line); display: flex; justify-content: center; }
+  .pick div { width: 100%; max-width: 1120px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .pick strong { font: 600 15px var(--display); }
+  .pick span { color: var(--dim); font-size: 13px; }
+  .copy { margin-left: auto; border: 0; border-radius: 999px; background: var(--kai); color: #04121f; font: 600 13px var(--body); padding: 8px 16px; cursor: pointer; }
+
+  /* Motion. Every mascot breathes; each has one move of its own. */
+  .m-bob { animation: bob 3.2s ease-in-out infinite; transform-origin: 50% 90%; transform-box: fill-box; }
+  .m-float { animation: float 3.6s ease-in-out infinite; }
+  .m-rock { animation: rock 3s ease-in-out infinite; transform-origin: 50% 85%; transform-box: fill-box; }
+  .m-hop { animation: hop 2.4s cubic-bezier(.3, 0, .3, 1) infinite; transform-origin: 50% 100%; transform-box: fill-box; }
+  .m-flick { animation: flick 1.5s ease-in-out infinite; transform-origin: 50% 100%; transform-box: fill-box; }
+  .m-spin { animation: wobble 5s ease-in-out infinite; transform-origin: 50% 55%; transform-box: fill-box; }
+  .eyes { animation: blink 4.4s infinite; transform-origin: 50% 50%; transform-box: fill-box; }
+  .ear-l { animation: earL 2.8s ease-in-out infinite; transform-origin: 50% 100%; transform-box: fill-box; }
+  .ear-r { animation: earR 2.8s ease-in-out infinite; transform-origin: 50% 100%; transform-box: fill-box; }
+  .glow { animation: glow 1.6s ease-in-out infinite; }
+  .wave { animation: wave 2.2s ease-in-out infinite; }
+  .dots circle { animation: dot 1.2s infinite; }
+  .dots circle:nth-child(2) { animation-delay: .2s; }
+  .dots circle:nth-child(3) { animation-delay: .4s; }
+  .ring { animation: ring 1.4s ease-out infinite; transform-origin: 50% 50%; transform-box: fill-box; }
+  @keyframes bob { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-3px) scale(1.02, .98); } }
+  @keyframes float { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(2px, -4px); } 75% { transform: translate(-2px, -2px); } }
+  @keyframes rock { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+  @keyframes hop { 0%, 55%, 100% { transform: translateY(0) scale(1, 1); } 62% { transform: translateY(0) scale(1.07, .9); } 78% { transform: translateY(-11px) scale(.96, 1.05); } 92% { transform: translateY(0) scale(1.05, .94); } }
+  @keyframes flick { 0%, 100% { transform: scale(1, 1) skewX(0); } 30% { transform: scale(.97, 1.05) skewX(-2deg); } 65% { transform: scale(1.02, .97) skewX(2deg); } }
+  @keyframes wobble { 0%, 100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.03); } }
+  @keyframes blink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.1); } }
+  @keyframes earL { 0%, 70%, 100% { transform: rotate(0); } 80% { transform: rotate(-14deg); } 90% { transform: rotate(4deg); } }
+  @keyframes earR { 0%, 74%, 100% { transform: rotate(0); } 84% { transform: rotate(14deg); } 94% { transform: rotate(-4deg); } }
+  @keyframes glow { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+  @keyframes wave { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
+  @keyframes dot { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+  @keyframes ring { from { transform: scale(.7); opacity: .55; } to { transform: scale(1.15); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { svg * { animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Kai maskot adayları</h1>
+    <p class="lead">On beş aday, hepsi Kai için sıfırdan çizildi. Üstteki düğmelerle dört durumu dene, beğendiğine tıkla. Her kartta büyük hali ve adadaki gerçek boyutu var.</p>
+  </header>
+  <div class="bar">
+    <span>Durum</span>
+    <div class="seg" id="states" role="group" aria-label="Durum"></div>
+  </div>
+  <main class="grid" id="grid"></main>
+</div>
+<div class="pick"><div><strong id="picked">Henüz seçmedin</strong><span id="pickedNote">Bir karta tıkla.</span><button class="copy" id="copy" hidden>Seçimi kopyala</button></div></div>
+
+<script>
+const INK = "#0a1622";
+// Each mascot: body markup (filled with the gradient), parts drawn above the body, where the eyes sit, and its own move.
+const MASCOTS = [
+  { name: "Yonca", note: "Dört yapraklı bulut. Reklamdaki bot, en tanınır silüet.", move: "m-bob",
+    body: '<circle cx="50" cy="30" r="23"/><circle cx="50" cy="74" r="23"/><circle cx="28" cy="52" r="23"/><circle cx="72" cy="52" r="23"/><circle cx="50" cy="52" r="27"/>' },
+  { name: "Kulaklı", note: "Yumuşak kutu gövde, iki yuvarlak kulak. Şimdikine en yakın his.", move: "m-bob",
+    body: '<circle class="ear-l" cx="30" cy="27" r="13"/><circle class="ear-r" cx="70" cy="27" r="13"/><rect x="13" y="26" width="74" height="60" rx="27"/>', eyeY: 57 },
+  { name: "Damla", note: "Tepesi kıvrık su damlası. En sadesi, küçükken de temiz.", move: "m-rock",
+    body: '<path d="M52 4 C50 22 86 38 86 62 A36 30 0 0 1 14 62 C14 40 38 30 44 16 C46 12 49 7 52 4Z"/>', eyeY: 62 },
+  { name: "Anten", note: "Tepesinde yanıp sönen bir anten. Dinlerken ışığı parlar.", move: "m-bob",
+    body: '<rect x="47.5" y="8" width="5" height="22" rx="2.5"/><rect x="14" y="28" width="72" height="58" rx="28"/>',
+    over: '<circle class="glow" cx="50" cy="7" r="6.5" fill="#d9f4ff"/>', eyeY: 58 },
+  { name: "Kedi", note: "Sivri kulaklı. Kulakları arada bir seğirir.", move: "m-bob",
+    body: '<path class="ear-l" d="M18 42 L21 12 L44 30Z" stroke-width="7" stroke-linejoin="round"/><path class="ear-r" d="M82 42 L79 12 L56 30Z" stroke-width="7" stroke-linejoin="round"/><rect x="12" y="28" width="76" height="58" rx="28"/>',
+    strokeBody: true, eyeY: 58,
+    over: '<path d="M46 66 Q50 70 54 66" fill="none" stroke="' + INK + '" stroke-width="2.5" stroke-linecap="round"/>' },
+  { name: "Bulut", note: "Üç tümsekli bulut. Yumuşak ve sakin.", move: "m-float",
+    body: '<circle cx="31" cy="48" r="20"/><circle cx="52" cy="38" r="25"/><circle cx="73" cy="50" r="18"/><rect x="11" y="48" width="80" height="38" rx="19"/>', eyeY: 62 },
+  { name: "Hayalet", note: "Havada süzülen küçük hayalet. Eteği dalgalanır.", move: "m-float",
+    body: '<path d="M16 52 A34 38 0 0 1 84 52 L84 86 Q75.5 76 67 86 Q58.5 96 50 86 Q41.5 76 33 86 Q24.5 96 16 86Z"/>', eyeY: 50 },
+  { name: "Yıldız", note: "Köşeleri yuvarlatılmış yıldız. Bitince sevinçle sallanır.", move: "m-spin",
+    body: '<polygon points="50,14 59.4,39.1 86.1,40.2 65.2,56.9 72.3,82.8 50,68 27.7,82.8 34.8,56.9 13.9,40.2 40.6,39.1" stroke-width="13" stroke-linejoin="round"/>',
+    strokeBody: true, eyeY: 53, eyeGap: 7.5, eyeScale: .82 },
+  { name: "Tavşan", note: "Uzun kulaklı, yerinde zıplar.", move: "m-hop",
+    body: '<ellipse class="ear-l" cx="36" cy="18" rx="9" ry="21"/><ellipse class="ear-r" cx="64" cy="18" rx="9" ry="21"/><rect x="16" y="34" width="68" height="54" rx="27"/>',
+    over: '<ellipse cx="36" cy="19" rx="4" ry="13" fill="#fff" opacity=".3"/><ellipse cx="64" cy="19" rx="4" ry="13" fill="#fff" opacity=".3"/>', eyeY: 62 },
+  { name: "Ayı", note: "Yuvarlak yüz, küçük kulaklar ve burun.", move: "m-bob",
+    body: '<circle cx="24" cy="30" r="12"/><circle cx="76" cy="30" r="12"/><circle cx="50" cy="55" r="36"/>',
+    over: '<ellipse cx="50" cy="68" rx="14" ry="10" fill="#fff" opacity=".28"/><ellipse cx="50" cy="64" rx="4" ry="3" fill="' + INK + '"/>', eyeY: 50 },
+  { name: "Fasulye", note: "Yana yatmış fasulye. Sağa sola sallanır.", move: "m-rock",
+    body: '<path d="M32 14 C54 6 82 24 84 52 C86 80 62 96 40 90 C22 85 14 68 22 56 C29 45 20 22 32 14Z"/>', eyeY: 50, eyeX: 4 },
+  { name: "Altıgen", note: "Vizörlü küçük robot. Gözleri ışık gibi yanar.", move: "m-bob",
+    body: '<polygon points="50,18 79,35 79,69 50,86 21,69 21,35" stroke-width="13" stroke-linejoin="round"/>', strokeBody: true,
+    over: '<rect x="26" y="40" width="48" height="24" rx="12" fill="' + INK + '"/>', eyeY: 52, eyeColor: "#8fe6ff", eyeScale: .72, eyeGap: 8 },
+  { name: "Kıvılcım", note: "Alev gibi titreşen kıvılcım. En hareketlisi.", move: "m-flick",
+    body: '<path d="M50 2 C56 22 84 34 84 62 A34 30 0 0 1 16 62 C16 46 27 40 31 27 C37 36 41 38 44 30 C47 22 46 12 50 2Z"/>', eyeY: 63 },
+  { name: "Gezegen", note: "Halkalı gezegen. Halkası hafifçe sallanır.", move: "m-spin",
+    under: '<ellipse cx="50" cy="56" rx="49" ry="12" fill="none" stroke="#bfe8ff" stroke-width="5" transform="rotate(-14 50 56)"/>',
+    body: '<circle cx="50" cy="53" r="32"/>',
+    over: '<path d="M1 56 A49 12 0 0 0 99 56" fill="none" stroke="#bfe8ff" stroke-width="5" stroke-linecap="round" transform="rotate(-14 50 56)"/>', eyeY: 47 },
+  { name: "Filiz", note: "Tepesinde iki yaprak. Yaprakları rüzgârda oynar.", move: "m-bob",
+    body: '<rect x="48" y="14" width="4" height="20" rx="2"/><rect x="16" y="32" width="68" height="56" rx="28"/>',
+    over: '<g class="wave"><path d="M50 18 C40 3 25 7 23 16 C33 23 44 23 50 18Z" fill="#5ee0a0"/><path d="M50 18 C60 3 75 7 77 16 C67 23 56 23 50 18Z" fill="#3fcf8a"/></g>', eyeY: 62 },
+];
+
+const STATES = [["idle", "Boşta"], ["listen", "Dinliyor"], ["think", "Düşünüyor"], ["done", "Bitti"]];
+let state = "idle";
+let picked = -1;
+let serial = 0;
+
+function eyes(m) {
+  const y = m.eyeY ?? 54, x = 50 + (m.eyeX ?? 0), gap = m.eyeGap ?? 9, s = m.eyeScale ?? 1, color = m.eyeColor ?? INK;
+  const l = x - gap, r = x + gap;
+  if (state === "listen") return `<g class="eyes" fill="${color}"><circle cx="${l}" cy="${y}" r="${7.5 * s}"/><circle cx="${r}" cy="${y}" r="${7.5 * s}"/></g>`;
+  if (state === "think") return `<g fill="${color}"><ellipse cx="${l + 3}" cy="${y - 5 * s}" rx="${5 * s}" ry="${7 * s}"/><ellipse cx="${r + 3}" cy="${y - 5 * s}" rx="${5 * s}" ry="${7 * s}"/></g>`;
+  if (state === "done") {
+    const w = 6.5 * s, h = 9 * s;
+    const arc = (cx) => `<path d="M${cx - w} ${y + 3 * s} Q${cx} ${y + 3 * s - h} ${cx + w} ${y + 3 * s}" fill="none" stroke="${color}" stroke-width="${4.2 * s}" stroke-linecap="round"/>`;
+    return arc(l) + arc(r);
+  }
+  return `<g class="eyes" fill="${color}"><ellipse cx="${l}" cy="${y}" rx="${5.5 * s}" ry="${8.5 * s}"/><ellipse cx="${r}" cy="${y}" rx="${5.5 * s}" ry="${8.5 * s}"/></g>`;
+}
+
+function draw(m, size) {
+  const id = "g" + serial++;
+  const fill = `fill="url(#${id})"` + (m.strokeBody ? ` stroke="url(#${id})"` : "");
+  const extra =
+    state === "think" ? '<g class="dots" fill="#ffffff"><circle cx="84" cy="14" r="3.2"/><circle cx="93" cy="7" r="3.2"/><circle cx="102" cy="0" r="3.2"/></g>' :
+    state === "listen" ? `<circle class="ring" cx="50" cy="52" r="50" fill="none" stroke="#4db5ff" stroke-width="2"/>` : "";
+  const move = state === "done" && m.move === "m-bob" ? "m-hop" : m.move;
+  return `<svg width="${size}" height="${size}" viewBox="-12 -12 124 124" aria-hidden="true">
+    <defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="25" y1="5" x2="75" y2="95"><stop offset="0" stop-color="#8ad8ff"/><stop offset="1" stop-color="#1f86e8"/></linearGradient></defs>
+    ${extra}<g class="${move}">${m.under ?? ""}<g ${fill}>${m.body}</g>
+    <ellipse cx="36" cy="${(m.eyeY ?? 54) - 18}" rx="8" ry="4.5" fill="#ffffff" opacity=".2" transform="rotate(-24 36 ${(m.eyeY ?? 54) - 18})"/>
+    ${m.over ?? ""}${eyes(m)}</g></svg>`;
+}
+
+const grid = document.getElementById("grid");
+function render() {
+  grid.innerHTML = MASCOTS.map((m, i) => `
+    <button class="card" id="card-${i}" data-i="${i}" aria-pressed="${i === picked}">
+      <span class="head"><span class="num">${String(i + 1).padStart(2, "0")}</span><span class="name">${m.name}</span></span>
+      <span class="stage">${draw(m, 132)}</span>
+      <span class="pill">${draw(m, 28)}<i></i><b>Kai</b></span>
+      <span class="note">${m.note}</span>
+    </button>`).join("");
+}
+
+function showPick() {
+  const label = document.getElementById("picked"), note = document.getElementById("pickedNote"), copy = document.getElementById("copy");
+  if (picked < 0) { label.textContent = "Henüz seçmedin"; note.textContent = "Bir karta tıkla."; copy.hidden = true; return; }
+  label.textContent = `Seçimin: ${picked + 1} · ${MASCOTS[picked].name}`;
+  note.textContent = "Bunu Claude'a yaz, adaya o koysun.";
+  copy.hidden = false;
+}
+
+grid.addEventListener("click", (e) => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+  picked = Number(card.dataset.i);
+  try { localStorage.setItem("kai-mascot", String(picked)); } catch {}
+  for (const c of grid.children) c.setAttribute("aria-pressed", String(c === card));
+  showPick();
+});
+
+const seg = document.getElementById("states");
+seg.innerHTML = STATES.map(([id, text]) => `<button id="state-${id}" data-s="${id}" aria-pressed="${id === state}">${text}</button>`).join("");
+seg.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  state = b.dataset.s;
+  for (const x of seg.children) x.setAttribute("aria-pressed", String(x === b));
+  render();
+});
+
+document.getElementById("copy").addEventListener("click", async (e) => {
+  const text = `Maskot ${picked + 1}: ${MASCOTS[picked].name}`;
+  try { await navigator.clipboard.writeText(text); e.target.textContent = "Kopyalandı"; }
+  catch { e.target.textContent = text; }
+  setTimeout(() => { e.target.textContent = "Seçimi kopyala"; }, 1600);
+});
+
+try { const saved = Number(localStorage.getItem("kai-mascot")); if (Number.isInteger(saved) && saved >= 0 && saved < MASCOTS.length && localStorage.getItem("kai-mascot") !== null) picked = saved; } catch {}
+render();
+showPick();
+</script>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kai maskot adayları</title>
+<style>
+  :root { --bg: #0b0b0d; --card: #151518; --line: #26262b; --fg: #f4f4f5; --muted: #9a9aa5; --blue: #4db5ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 "Segoe UI", system-ui, sans-serif; padding: 32px 16px 48px; }
+  header { max-width: 1040px; margin: 0 auto 24px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  header p { margin: 0; color: var(--muted); max-width: 62ch; }
+  main { max-width: 1040px; margin: 0 auto; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 22px; }
+  .card h2 { margin: 0; font-size: 18px; }
+  .card .note { margin: 2px 0 0; color: var(--muted); font-size: 13px; min-height: 40px; }
+  .stage { display: grid; place-items: center; height: 190px; }
+  .label { color: var(--muted); font-size: 12px; margin: 14px 0 8px; }
+  .pill { display: flex; align-items: center; gap: 10px; background: #000; border-radius: 999px; padding: 6px 16px 6px 8px; width: fit-content; border: 1px solid #1d1d22; }
+  .pill b { font-weight: 600; color: var(--blue); font-size: 13px; }
+  .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+  .pill span { color: var(--muted); font-size: 12px; }
+  .states { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; color: var(--muted); font-size: 11px; }
+  .states svg { display: block; margin: 0 auto 4px; }
+
+  .bob { animation: bob 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
+  .eyes { animation: blink 4.6s infinite; transform-origin: 50px 52px; }
+  .think .eyes { animation: none; }
+  .think .dots circle { animation: dot 1.2s infinite; }
+  .think .dots circle:nth-child(2) { animation-delay: .2s; }
+  .think .dots circle:nth-child(3) { animation-delay: .4s; }
+  .listen .ring { animation: ring 1.4s ease-out infinite; transform-origin: 50px 52px; }
+  @keyframes bob { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-4px) scale(1.02, .98); } }
+  @keyframes blink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.1); } }
+  @keyframes dot { 0%, 100% { opacity: .25; } 40% { opacity: 1; } }
+  @keyframes ring { from { transform: scale(.75); opacity: .5; } to { transform: scale(1.25); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .bob, .eyes, .dots circle, .ring { animation: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kai maskot adayları</h1>
+  <p>Üçü de Kai'ye özel çizim, şu anki karakterden alınmış bir parça yok. Her kartta büyük hali, adadaki gerçek boyutu ve dört durumu var. Beğendiğini söyle, onu adaya koyarım.</p>
+</header>
+<main id="cards"></main>
+
+<script>
+const BODIES = {
+  yonca: {
+    name: "A · Yonca",
+    note: "Reklamda kullandığımız dört yapraklı bulut. En ayırt edilebilir silüet.",
+    body: '<circle cx="50" cy="28" r="24"/><circle cx="50" cy="72" r="24"/><circle cx="28" cy="50" r="24"/><circle cx="72" cy="50" r="24"/><circle cx="50" cy="50" r="28"/>',
+  },
+  kulak: {
+    name: "B · Kulaklı",
+    note: "Şimdikine en yakın his: yumuşak kutu gövde, üstte iki küçük kulak.",
+    body: '<circle cx="31" cy="27" r="13"/><circle cx="69" cy="27" r="13"/><rect x="13" y="24" width="74" height="60" rx="27"/>',
+  },
+  damla: {
+    name: "C · Damla",
+    note: "Tepesi kıvrık su damlası. En sade olanı, küçük boyutta en temiz duran.",
+    body: '<path d="M52 9 C50 24 84 36 84 60 A34 30 0 0 1 16 60 C16 40 38 30 44 18 C46 14 49 10 52 9 Z"/>',
+  },
+};
+
+const EYES = {
+  normal: '<ellipse cx="41" cy="52" rx="5.5" ry="8.5"/><ellipse cx="59" cy="52" rx="5.5" ry="8.5"/>',
+  listen: '<circle cx="40" cy="52" r="8"/><circle cx="60" cy="52" r="8"/>',
+  think: '<ellipse cx="44" cy="47" rx="5" ry="7"/><ellipse cx="62" cy="47" rx="5" ry="7"/>',
+  happy: '<path d="M34 55 Q41 44 48 55" fill="none" stroke="#0a1622" stroke-width="4.5" stroke-linecap="round"/><path d="M52 55 Q59 44 66 55" fill="none" stroke="#0a1622" stroke-width="4.5" stroke-linecap="round"/>',
+};
+
+function bot(kind, size, state = "normal") {
+  const id = `g-${kind}-${size}-${state}`;
+  const extra =
+    state === "think" ? '<g class="dots" fill="#fff"><circle cx="72" cy="20" r="3"/><circle cx="81" cy="14" r="3"/><circle cx="90" cy="8" r="3"/></g>' :
+    state === "listen" ? '<circle class="ring" cx="50" cy="52" r="44" fill="none" stroke="#4db5ff" stroke-width="2"/>' : "";
+  return `<svg class="${state}" width="${size}" height="${size}" viewBox="-6 -6 112 112" aria-hidden="true">
+    <defs><linearGradient id="${id}" x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#8ad8ff"/><stop offset="1" stop-color="#1f86e8"/></linearGradient></defs>
+    ${extra}
+    <g class="bob"><g fill="url(#${id})">${BODIES[kind].body}</g>
+    <ellipse cx="36" cy="34" rx="9" ry="5" fill="#fff" opacity=".22" transform="rotate(-24 36 34)"/>
+    <g class="eyes" fill="#0a1622">${EYES[state]}</g></g></svg>`;
+}
+
+const STATES = [["normal", "Boşta"], ["listen", "Dinliyor"], ["think", "Düşünüyor"], ["happy", "Bitti"]];
+
+document.getElementById("cards").innerHTML = Object.entries(BODIES).map(([kind, item]) => `
+  <section class="card">
+    <h2>${item.name}</h2>
+    <p class="note">${item.note}</p>
+    <div class="stage">${bot(kind, 150)}</div>
+    <div class="label">Adada gerçek boyut</div>
+    <div class="pill">${bot(kind, 30)}<i></i><b>Kai</b><span>Claude Code</span></div>
+    <div class="label">Durumlar</div>
+    <div class="states">${STATES.map(([state, text]) => `<div>${bot(kind, 56, state)}${text}</div>`).join("")}</div>
+  </section>`).join("");
+</script>
+</body>
+</html>

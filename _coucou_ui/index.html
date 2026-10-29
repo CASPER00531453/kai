@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kai</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      function hugIsland() {
+        var el = document.getElementById("island");
+        var api = window.pywebview && window.pywebview.api;
+        if (!el || !api || !api.island) return;
+        var dpr = window.devicePixelRatio || 1;
+        api.island(Math.ceil(el.offsetWidth * dpr), Math.ceil(el.offsetHeight * dpr));
+      }
+      setInterval(hugIsland, 200);
+      window.addEventListener("pywebviewready", hugIsland);
+    </script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

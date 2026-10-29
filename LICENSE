@@ -1,0 +1,70 @@
+﻿Kai - Proprietary License
+
+Copyright (c) 2026 Casper Technology (https://casper-technology.vercel.app/)
+All rights reserved.
+
+This software, including its source code, compiled program, installer,
+interface, mascots, artwork, sounds, text and documentation (together, the
+"Software"), is the property of Casper Technology and is protected by
+copyright law and international treaties.
+
+You may download and install the official Kai installer published by Casper
+Technology and use it for your own personal or internal business purposes.
+
+Without the prior written permission of Casper Technology you may NOT:
+
+  1. copy, publish, distribute, sell, rent, lend or sublicense the Software
+     or any part of it;
+  2. modify the Software, translate it or create derivative works from it;
+  3. reverse engineer, decompile or disassemble the Software, except to the
+     extent the applicable law expressly permits it despite this restriction;
+  4. use the Software's source code, or any part of it, in another product;
+  5. remove or change any copyright notice, license text or trademark in the
+     Software;
+  6. use the name "Kai", the Kai mascots or Casper Technology's names and
+     logos to promote another product.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+CASPER TECHNOLOGY BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+Permission requests: https://casper-technology.vercel.app/
+
+-------------------------------------------------------------------------------
+Third-party code
+
+Part of Kai's island and window interface (the _coucou_ui folder) is derived
+from Coucou (https://github.com/Louis-CFM/coucou). That code was received
+under the MIT License below, whose notice must be kept. The MIT License
+applies only to Coucou's original code as published by its author; Kai's own
+code, changes and additions stay under the proprietary terms above.
+
+MIT License
+
+Copyright (c) 2026 Louis Raillé
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+The names "Coucou" and "Mochi", the Mochi character, Coucou's icons and its
+sounds belong to Louis Raillé and are not part of Kai.
+
+Other third-party libraries bundled with Kai keep their own licenses; see
+THIRD_PARTY_NOTICES.md.

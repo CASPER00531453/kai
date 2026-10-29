@@ -1,0 +1,23 @@
+.venv/
+build/
+dist/
+__pycache__/
+*.spec
+preview-*.png
+kai.log
+kai.ico
+graphify-out/
+
+# Ad films: large, and the showreel shows the Mochi character (not ours to publish)
+*.mp4
+# The feedback server's local files
+server/feedback/node_modules/
+server/feedback/.vercel/
+server/feedback/.env*
+# Kai.spec is part of the source: how Kai is built
+!Kai.spec
+node_modules/
+_coucou_ui/dist/
+@AutomationLog.txt
+_shrink.png
+.claude/settings.local.json
