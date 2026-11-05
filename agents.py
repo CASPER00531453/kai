@@ -99,6 +99,7 @@ def answer(word: str, request_id: str = "") -> None:
         pending = _permits.pop(key, None) if key else None
     if not pending:
         return
+    _resolved(key)
     # allow, deny, "ask" (hand it back to the terminal) or the answers to a question.
     word = str(word).strip()
     known = ("allow", "always", "deny", "ask", "plan_auto", "plan_default", "plan_change")
@@ -146,6 +147,32 @@ def _serve(on_event) -> None:
 raw_sink = None
 
 
+def _resolved(request_id: str) -> None:
+    """A request is settled: the phones take it down."""
+    try:
+        import phone_link
+
+        phone_link.on_resolved(request_id)
+    except Exception:
+        pass
+
+
+def _from_phone(request_id: str, word: str) -> None:
+    """A phone answered: same path as a click on the island, then the island's card goes."""
+    answer(word, request_id)
+    _forward({"hook_event_name": "KaiResolved", "request_id": request_id})
+
+
+def _phone_event(payload: dict) -> None:
+    try:
+        import phone_link
+
+        phone_link.decide = _from_phone
+        phone_link.on_hook(payload)
+    except Exception:
+        pass
+
+
 def _forward(payload: dict) -> None:
     sink = raw_sink
     if sink is None:
@@ -184,6 +211,7 @@ def _client(pipe, on_event) -> None:
                 _log(f"sıradaki iş verildi: {next_task[:80]}")
         if event != "PermissionRequest":
             _forward(payload)
+            _phone_event(payload)
         if event == "Stop":
             try:
                 win32file.WriteFile(pipe, (json.dumps({"next": next_task}, ensure_ascii=True) + "\n").encode("ascii"))
@@ -230,6 +258,13 @@ def _client(pipe, on_event) -> None:
         _log(f"{kind} geldi: {payload.get('tool_name')}")
         asked_at = time.time()
         _forward(payload)
+        try:
+            import phone_link
+
+            phone_link.decide = _from_phone
+            phone_link.on_request(request_id, payload)
+        except Exception:
+            pass
         on_event(summarize(payload), True)
         # A question sent ahead (--ask) holds Claude's own question back, so it waits
         # less: past that, Claude shows it as usual.
@@ -241,6 +276,7 @@ def _client(pipe, on_event) -> None:
             with _lock:
                 if _permits.get(request_id) is box:
                     del _permits[request_id]
+            _resolved(request_id)
             return
         word = box["word"] or "deny"
         _log(f"{kind}: {'cevaplandı' if word.startswith('{') else word} ({time.time() - asked_at:.0f} sn)")

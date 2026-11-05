@@ -31,7 +31,7 @@ CHOICES = {
     "stt_engine": ("online", "whisper", "parakeet"),
     "ok_kai_sense": ("low", "mid", "high"),
 }
-FLAGS = ("dictation", "ok_kai", "app_on_launch", "show_clock", "alerts_all_pills", "feels_pc", "claude_desktop_chat", "update_checks", "summary_enabled", "mute_others", "plan_in_compact")
+FLAGS = ("dictation", "ok_kai", "app_on_launch", "show_clock", "alerts_all_pills", "feels_pc", "claude_desktop_chat", "update_checks", "summary_enabled", "mute_others", "plan_in_compact", "phone_link", "phone_answers")
 
 
 def _settings():
@@ -70,6 +70,8 @@ def _all() -> dict:
             "summary_time": s.summary_time,
             "mute_others": s.mute_others,
             "plan_in_compact": s.plan_in_compact,
+            "phone_link": s.phone_link,
+            "phone_answers": s.phone_answers,
             "mail_address": s.mail_address,
             "mail_server": s.mail_server,
         },
@@ -161,6 +163,23 @@ class AppApi:
             return json.dumps(check_key(s.provider, s.groq_key if s.provider == "groq" else s.api_key), ensure_ascii=True)
         except Exception:
             return json.dumps("unknown", ensure_ascii=True)
+
+    def phone(self, action="status") -> str:
+        """Kai window › Phone: the link's state, a new pairing code, or unpairing."""
+        import phone_link
+
+        action = str(action)
+        out = {}
+        if action == "pair":
+            out = phone_link.pair_again()
+            self.log("telefon: yeni eşleştirme kodu")
+        elif action == "unpair":
+            phone_link.unpair()
+            self.log("telefon: eşleşme kaldırıldı")
+        elif action == "code":
+            out = phone_link.pairing()
+        out.update(phone_link.status())
+        return json.dumps(out, ensure_ascii=True)
 
     def list_models(self) -> str:
         """The models the saved key can use, for the model field's suggestions."""

@@ -342,6 +342,24 @@ function settleApproval(island: Island, sessionId: string | undefined) {
 }
 
 function handleHook(island: Island, payload: HookPayload) {
+  // Answered on the phone (phone_link.py): the card, or its place in line, goes.
+  if (payload.hook_event_name === "KaiResolved") {
+    const id = payload.request_id ?? "";
+    State.approvalQueue = State.approvalQueue.filter((x) => x.requestId !== id);
+    if (State.pendingApproval?.requestId === id) {
+      State.pendingApproval = null;
+      if (!nextApproval(island)) {
+        State.isPinned = false;
+        island.dropPin();
+        State.updateTask(CLAUDE_ID, "working");
+        State.setPillBadge(CLAUDE_ID, State.approvalQueue.length ? "approval" : null);
+        if (State.view === "approval" || State.view === "question") island.setView(State.defaultView());
+      }
+      void Bridge.log("kart telefondan cevaplandı");
+    }
+    State.notify();
+    return;
+  }
   if (State.paused) {
     // Silence here used to cost Claude Code nearly two minutes: the relay waited
     // for a decision from an island that had already decided not to look. Say so,

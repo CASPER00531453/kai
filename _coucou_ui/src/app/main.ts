@@ -13,6 +13,7 @@ import { dictationPage, dictionaryPage, snippetsPage, statsPage, stylesPage, typ
 import { agentsPage, chatPage, generalPage, integrationsPage, mascotPage, okKaiPage, shortcutsPage } from "./kaipages";
 import { notesPage } from "./notespage";
 import { feedbackPage } from "./feedbackpage";
+import { phonePage } from "./phonepage";
 import { showTour } from "./tour";
 import { L, setTurkish } from "./ui";
 
@@ -30,6 +31,7 @@ const PAGES: Page[] = [
   { id: "agents", group: "kai", title: () => L("Ajanlar", "Agents"), sub: () => L("Claude Code ve diğerleri adada.", "Claude Code and others on the island."), color: "#f55f47", icon: "M4 6h16v10H4zM8 20h8M9 10l2 2-2 2M13 14h3" },
   { id: "chat", group: "kai", title: () => L("Sohbet", "Chat"), sub: () => L("Kai'nin beyni ve sesi.", "Kai's brain and voice."), color: "#6c8cff", icon: "M4 5h16v11H9l-5 4z" },
   { id: "okkai", group: "kai", title: () => "OK Kai", sub: () => L("Adını söyle, iste.", "Say its name, ask."), color: "#2ee6d6", icon: "M12 4v16M8 8v8M16 8v8M4 11v2M20 11v2" },
+  { id: "phone", group: "kai", title: () => L("Telefon", "Phone"), sub: () => L("Kai'yi telefondan kumanda et.", "Control Kai from your phone."), color: "#7c5cff", icon: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2" },
   { id: "integrations", group: "kai", title: () => L("Entegrasyonlar", "Integrations"), sub: () => L("E-posta, takvim, Spotify, GitHub, Stripe.", "Email, calendar, Spotify, GitHub, Stripe."), color: "#1DB954", icon: "M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1" },
   { id: "feedback", group: "kai", title: () => L("İstek ve değerlendirme", "Rating & wishes"), sub: () => L("Bu sürüme puan ver, sonrakinde ne olsun söyle.", "Rate this version, say what comes next."), color: "#ffd666", icon: "M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.5l-5.9 3.1 1.2-6.5L2.5 9.5l6.6-.9z" },
   { id: "shortcuts", group: "kai", title: () => L("Kısayollar", "Shortcuts"), sub: () => L("Hepsi bir arada.", "All in one place."), color: "#f4f5f7", icon: "M3 7h18v10H3zM7 11h1M11 11h2M16 11h1M7 14h10" },
@@ -49,6 +51,7 @@ const TERMS: Record<string, string> = {
   chat: "sohbet yapay zeka sağlayıcı api anahtar model groq openai anthropic gemini mistral ses elevenlabs sesli cevap chat ai provider key voice speak",
   okkai: "ok kai uyandır ad söyle hassasiyet wake word sensitivity",
   integrations: "entegrasyon e-posta mail takvim spotify github stripe vercel notion hava integrations email calendar weather",
+  phone: "telefon android kumanda uzaktan eşleştir qr bildirim izin onay mobil phone remote control pair notification approve mobile",
   feedback: "istek değerlendirme yıldız puan fikir gelen kutusu rating wishes stars inbox",
   shortcuts: "kısayollar tuşlar altgr alt shift çeviri ekran shortcuts keys translate screen",
 };
@@ -193,6 +196,7 @@ function render() {
     case "integrations": body = integrationsPage(ctx); break;
     case "shortcuts": body = shortcutsPage(ctx); break;
     case "feedback": body = feedbackPage(ctx); break;
+    case "phone": body = phonePage(ctx); break;
     default: body = dictationPage(ctx);
   }
   const header = h("header", { class: "a-head" }, band.el, h("div", { class: "a-head-text" }, h("h1", { text: page.title() }), h("p", { text: page.sub() })));

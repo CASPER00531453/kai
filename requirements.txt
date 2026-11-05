@@ -22,3 +22,5 @@ sentencepiece>=0.2.0
 icalendar>=7.0
 recurring-ical-events>=3.8
 pycaw>=20240210
+cryptography>=44
+qrcode>=8

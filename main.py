@@ -234,6 +234,7 @@ class KaiApp:
         import hush
 
         hush.setup()
+        self._apply_phone()
         self.diffs = DiffWatch(self._code_event)
         self._due: queue.Queue = queue.Queue()
         reminders.start(self._reminder_due)
@@ -480,11 +481,21 @@ class KaiApp:
         self._settings_stamp = stamp
         self.settings.load()
         self._mic_broken = False
+        self._apply_phone()
         self.island.size_percent = self.settings.island_scale
         if not self.settings.mic_always and self.listening and not self.alt_down:
             self._drop_mic()
         self._apply_flow()
         self.tray.refresh()
+
+    def _apply_phone(self) -> None:
+        """The phone link follows its switch in the Kai window."""
+        try:
+            import phone_link
+
+            phone_link.apply(self.settings)
+        except Exception as exc:
+            log(f"telefon bağlantısı: {exc}")
 
     def _menu_alive(self) -> bool:
         proc = getattr(self, "menu_proc", None)
@@ -1256,6 +1267,12 @@ class KaiApp:
             self.open_app(str(data.get("arg") or ""))
         elif cmd == "settings":
             self._reload_settings()
+        elif cmd == "phone":
+            # Paired again or unpaired in the Kai window: the phone with the old token goes.
+            import phone_link
+
+            if phone_link._server:
+                phone_link._server.drop_all()
 
     def _write_status(self) -> None:
         now = time.monotonic()

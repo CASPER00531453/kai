@@ -149,6 +149,8 @@ class Settings:
         self.summary_time = "21:00"
         self.mute_others = True
         self.plan_in_compact = True
+        self.phone_link = False
+        self.phone_answers = True
         self.feedback_key = ""
         self.admin = False
         self.load()
@@ -242,6 +244,9 @@ class Settings:
         self.mute_others = bool(data.get("mute_others", True))
         # The Claude plan's percentage in the compact island, next to the mascot.
         self.plan_in_compact = bool(data.get("plan_in_compact", True))
+        # The Android app as a remote control (phone_link.py): off until turned on.
+        self.phone_link = bool(data.get("phone_link", False))
+        self.phone_answers = bool(data.get("phone_answers", True))
         _apply_hush(self)
         # Only the developer's Kai has one: it collects the ratings people send.
         self.feedback_key = _unseal(str(data.get("feedback_key") or ""))
@@ -307,6 +312,8 @@ class Settings:
             "summary_time": clock_time(self.summary_time, "21:00"),
             "mute_others": bool(self.mute_others),
             "plan_in_compact": bool(self.plan_in_compact),
+            "phone_link": bool(self.phone_link),
+            "phone_answers": bool(self.phone_answers),
             "feedback_key": _seal(self.feedback_key.strip()),
             "admin": _seal("owner") if self.admin else "",
         }
