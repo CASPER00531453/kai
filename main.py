@@ -230,6 +230,10 @@ class KaiApp:
         self._decision_stamp = self._decision_mtime()
         agents.raw_sink = self._hook_to_v2
         agents.start(self._agent_event)
+        # Sound left muted by a Kai that quit while listening comes back.
+        import hush
+
+        hush.setup()
         self.diffs = DiffWatch(self._code_event)
         self._due: queue.Queue = queue.Queue()
         reminders.start(self._reminder_due)
@@ -453,12 +457,14 @@ class KaiApp:
         self._decision_stamp = stamp
         try:
             with open(v2_file("v2_decision.json"), encoding="utf-8") as handle:
-                word = str(json.load(handle).get("word") or "deny")
+                data = json.load(handle)
+            word = str(data.get("word") or "deny")
+            request_id = str(data.get("id") or "")
         except (OSError, ValueError, AttributeError):
             return
         self.permit_points = None
         self.island.permit = False
-        agents.answer(word)
+        agents.answer(word, request_id)
 
     def _settings_mtime(self) -> float:
         try:

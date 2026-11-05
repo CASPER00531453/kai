@@ -737,3 +737,16 @@ html, body {
   font-weight: 600;
   font-size: 12px;
 }
+
+/* The settings search at the top of the sidebar (main.ts). */
+.a-nav-search {
+  width: auto;
+  margin: 4px 10px 8px;
+  height: 30px;
+  font-size: 12.5px;
+}
+.a-row-hit {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--page, #35b8ff) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--page, #35b8ff) 45%, transparent);
+}

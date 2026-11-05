@@ -11,7 +11,8 @@ import {
 } from "../core/layout";
 import { Sound } from "../core/sound";
 import { prefs, setPref, turkish } from "../core/prefs";
-import { restoreAlertFocus } from "./hooks";
+import { usageColor, usagePct } from "../core/usage";
+import { nextApproval, restoreAlertFocus } from "./hooks";
 import { Focus } from "./focus";
 import { State } from "../core/state";
 import { BotEngine } from "../mochi/engine";
@@ -53,6 +54,8 @@ export class Island {
   private miniGrid!: HTMLElement;
   private brand!: HTMLElement;
   private clockEl!: HTMLElement;
+  /** The Claude plan's percentage in the compact island (Coucou #979). */
+  private compactPlan!: HTMLElement;
   private clockTimer: number | null = null;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
@@ -169,23 +172,18 @@ export class Island {
         void Bridge.approvalDecision(req.requestId, d);
         // "Change plan": Claude stops, and its terminal comes forward to type the change.
         if (d === "plan_change") Bridge.focusHost(req.hostPid ?? 0);
-        State.pendingApproval = null;
-        State.isPinned = false;
-        this.fsm.pinned = false;
-        State.updateTask("integration_claude", "working");
-        State.setPillBadge("integration_claude", null);
-        this.setView(State.defaultView());
+        this.dropApproval();
       },
       answer: (answers) => {
         if (!State.pendingApproval) return;
         Sound.play("approve");
-        Bridge.approvalAnswer(answers);
+        Bridge.approvalAnswer(State.pendingApproval.requestId, answers);
         this.dropApproval();
       },
       answerInTerminal: () => {
         if (!State.pendingApproval) return;
         Sound.play("blip");
-        Bridge.approvalAsk();
+        Bridge.approvalAsk(State.pendingApproval.requestId);
         this.dropApproval();
       },
       toggleSound: () => {
@@ -224,6 +222,18 @@ export class Island {
     this.miniGrid = h("div", { id: "mini-grid" });
     this.brand = h("div", { id: "kai-brand", text: "Kai V2" });
     this.clockEl = h("div", { id: "island-clock" });
+    this.compactPlan = h("button", {
+      id: "compact-plan",
+      title: turkish() ? "Claude planı" : "Claude plan usage",
+      onmousedown: (e: Event) => e.stopPropagation(),
+      onclick: (e: Event) => {
+        // A click opens the Kai pill, where the plan's card is.
+        e.stopPropagation();
+        Sound.resume();
+        State.focusId = "integration_claude";
+        this.alert("overview");
+      },
+    }, h("i"), h("span"));
     this.countdown = h("div", { id: "countdown" });
 
     this.header = buildHeader(actions);
@@ -259,6 +269,7 @@ export class Island {
       this.botCanvas,
       this.brand,
       this.clockEl,
+      this.compactPlan,
       this.miniGrid,
       this.countdown,
     );
@@ -640,6 +651,8 @@ export class Island {
   /** The request on screen has been dealt with: the card goes, the island is free again. */
   private dropApproval() {
     State.pendingApproval = null;
+    // The next request in line takes the card.
+    if (nextApproval(this)) return;
     State.isPinned = false;
     this.fsm.pinned = false;
     State.updateTask("integration_claude", "working");
@@ -1096,6 +1109,20 @@ export class Island {
     // The clock takes the brand's place in the middle, unless a note is on show there.
     const clock = showGrid && Boolean(prefs()?.clock) && !this.brand.className;
     this.brand.style.opacity = showGrid && !clock ? "1" : "0";
+    // The plan's percentage, left of the other pills' mini bots; the middle makes room.
+    const pct = usagePct(State.usage);
+    const plan = showGrid && prefs()?.planCompact !== false && pct != null;
+    this.compactPlan.style.opacity = plan ? "1" : "0";
+    this.compactPlan.style.pointerEvents = plan ? "auto" : "none";
+    const otherPills = State.otherTasks.length > 0;
+    this.islandEl.classList.toggle("with-plan", plan);
+    if (plan) {
+      this.compactPlan.style.right = otherPills ? "50px" : "14px";
+      this.compactPlan.style.setProperty("--plan", usageColor(pct));
+      const label = `%${Math.round(pct)}`;
+      const span = this.compactPlan.lastChild as HTMLElement;
+      if (span.textContent !== label) span.textContent = label;
+    }
     this.updateClock(clock);
     if (showGrid) {
       const others = State.otherTasks.slice(0, 4);

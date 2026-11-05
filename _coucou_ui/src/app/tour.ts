@@ -7,13 +7,14 @@ import { BODY_COLORS, setBodyColor } from "../mochi/palette";
 import { h } from "../views/dom";
 import { Api, type AppState } from "./api";
 import { keycap, L } from "./ui";
+import { keyLabel } from "./keys";
 
 interface Step { title: () => string; text: () => string; visual: () => HTMLElement; act: (bot: BotEngine, t: number) => void }
 
 export function showTour(state: AppState, done: () => void) {
   const bot = new BotEngine();
   bot.mascot = parseMascot(String(state.island.mascot));
-  const dictKey = state.flow.dictation_key === "rshift" ? [L("Sağ Shift", "Right Shift")] : state.flow.dictation_key === "ctrlwin" ? ["Ctrl", "Win"] : [L("Sağ Ctrl", "Right Ctrl")];
+  const dictKey = keyLabel(state.flow.dictation_key);
   let color = String(state.island.color || BODY_COLORS[0]);
 
   const swatches = () => h("div", { class: "a-swatches" }, ...BODY_COLORS.map((c) => {

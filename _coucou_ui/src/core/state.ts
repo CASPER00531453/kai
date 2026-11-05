@@ -171,6 +171,8 @@ class AppState {
   searchResult: SearchResult | null = null;
   chatHistory: ChatMessage[] = [];
   pendingApproval: ApprovalInfo | null = null;
+  /** Requests waiting in line while another card is up, oldest first (Coucou #984). */
+  approvalQueue: ApprovalInfo[] = [];
 
   integrations: Record<string, IntegrationInfo> = {};
 

@@ -109,6 +109,10 @@ def _offline(samples, engine: str, language: str) -> str:
         return ""
     audio = np.asarray(samples, dtype=np.float32).reshape(-1)
     stream = rec.create_stream()
+    # Half a second of silence first, as a call always has: dictation starts with
+    # the key, the first word is already under way, and Parakeet, which guesses the
+    # language itself, then often began in English and went on mixing (Coucou 0.5.9).
+    stream.accept_waveform(RATE, np.zeros(int(RATE * 0.5), dtype=np.float32))
     stream.accept_waveform(RATE, audio)
     # Whisper hears the end of a sentence better with a little silence after it.
     stream.accept_waveform(RATE, np.zeros(int(RATE * 0.3), dtype=np.float32))

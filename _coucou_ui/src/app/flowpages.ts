@@ -2,16 +2,11 @@
 
 import { h } from "../views/dom";
 import { Api, type AppState, type FlowData, type ModelInfo } from "./api";
-import { button, card, input, keycap, L, mb, pill, row, segmented, toast, toggle, when } from "./ui";
+import { button, card, input, keycap, L, mb, pill, row, segmented, select, toast, toggle, when } from "./ui";
+import { PRESETS, keyLabel, recordButton } from "./keys";
 
 export type Ctx = { state: AppState; flow: FlowData; refresh: () => Promise<void>; go: (page: string) => void };
 
-const KEY_NAMES: Record<string, string[]> = {
-  rctrl: ["Sağ Ctrl"],
-  rshift: ["Sağ Shift"],
-  ctrlwin: ["Ctrl", "Win"],
-};
-const keyLabel = (k: string) => (KEY_NAMES[k] ?? ["Sağ Ctrl"]).map((x) => L(x, x.replace("Sağ", "Right")));
 
 function glyph(path: string): SVGSVGElement {
   const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -97,7 +92,13 @@ export function dictationPage(ctx: Ctx): HTMLElement {
       null,
       row(L("Her yerde dikte", "Dictation everywhere"), L("Bir tuşa basılı tut, konuş, bırak; söylediğin imlecin olduğu yere yazılır.", "Hold a key, speak, let go: your words are typed where you are."), toggle(f.dictation, async (on) => { await Api.set("dictation", on); await ctx.refresh(); })),
       how,
-      row(L("Dikte tuşu", "Dictation key"), L("AltGr Kai ile konuşmak için ayrıldı.", "AltGr is kept for talking to Kai."), segmented([[L("Sağ Ctrl", "Right Ctrl"), "rctrl"], [L("Sağ Shift", "Right Shift"), "rshift"], ["Ctrl + Win", "ctrlwin"]], f.dictation_key, async (v) => { await Api.set("dictation_key", v); await ctx.refresh(); })),
+      row(L("Dikte tuşu", "Dictation key"), L("AltGr Kai ile konuşmak için ayrıldı. Kendi kısayolunda tuşlara birlikte basıp bırak, en fazla dört tuş.", "AltGr is kept for talking to Kai. For your own shortcut press the keys together and let go, up to four."),
+        h("div", { class: "a-inline" },
+          select([
+            ...PRESETS.map(([v, tr]): [string, string] => [L(tr, tr.replace("Sol", "Left").replace("Sağ", "Right")), v]),
+            ...(f.dictation_key.startsWith("keys:") ? [[keyLabel(f.dictation_key).join(" + "), f.dictation_key] as [string, string]] : []),
+          ], f.dictation_key, async (v) => { await Api.set("dictation_key", v); await ctx.refresh(); }),
+          recordButton(async (v) => { await Api.set("dictation_key", v); await ctx.refresh(); toast(L("Dikte kısayolu kaydedildi", "Dictation shortcut saved")); }))),
       h(
         "div",
         { class: "a-tips" },
@@ -105,6 +106,7 @@ export function dictationPage(ctx: Ctx): HTMLElement {
         h("div", {}, keycap("Esc"), h("span", { text: L(" dikteyi iptal eder", " cancels") })),
         h("div", {}, keycap("Alt", "Shift", "V"), h("span", { text: L(" son dikteyi tekrar yapıştırır", " pastes the last dictation again") })),
       ),
+      row(L("Konuşurken diğer sesler sussun", "Quiet while you speak"), L("Kai seni dinlerken müzik, video ve görüşmeler susar; duyunca sesleri geri gelir. Kai'nin kendi sesi ve senin kapattıkların dokunulmaz.", "While Kai listens, music, videos and calls go quiet and come back once it has heard you. Kai's own sound and what you muted yourself stay as they are."), toggle(f.mute_others, async (on) => { await Api.set("mute_others", on); await ctx.refresh(); })),
       row(L("Son dikteyi yapıştır", "Paste the last dictation"), L("Yazı alanı yoksa metin panoda kalır; buradan da yapıştırabilirsin.", "When no text field had the focus, it stays on the clipboard."), button(L("Yapıştır", "Paste"), () => void Api.pasteLast(), "ghost")),
     ),
     card(L("Ses tanıma", "Speech recognition"), enginePicker(ctx), modelsGrid(ctx, ["whisper", "parakeet"])),

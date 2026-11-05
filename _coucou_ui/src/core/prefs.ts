@@ -118,6 +118,8 @@ export interface Prefs {
   alertsAll: boolean;
   /** The mascot shows how the computer feels. */
   feelsPc: boolean;
+  /** The Claude plan's percentage in the compact island (Coucou #979). */
+  planCompact: boolean;
 }
 
 interface HostApi {

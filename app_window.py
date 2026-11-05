@@ -28,11 +28,10 @@ _state: dict = {}
 SECRETS = ("api_key", "groq_key", "elevenlabs_key", "github_token", "vercel_token", "stripe_key", "mail_password", "calendar_ics")
 TEXTS = ("mail_address", "mail_server")
 CHOICES = {
-    "dictation_key": ("rctrl", "rshift", "ctrlwin"),
     "stt_engine": ("online", "whisper", "parakeet"),
     "ok_kai_sense": ("low", "mid", "high"),
 }
-FLAGS = ("dictation", "ok_kai", "app_on_launch", "show_clock", "alerts_all_pills", "feels_pc", "claude_desktop_chat", "update_checks", "summary_enabled")
+FLAGS = ("dictation", "ok_kai", "app_on_launch", "show_clock", "alerts_all_pills", "feels_pc", "claude_desktop_chat", "update_checks", "summary_enabled", "mute_others", "plan_in_compact")
 
 
 def _settings():
@@ -69,6 +68,8 @@ def _all() -> dict:
             "update_checks": s.update_checks,
             "summary_enabled": s.summary_enabled,
             "summary_time": s.summary_time,
+            "mute_others": s.mute_others,
+            "plan_in_compact": s.plan_in_compact,
             "mail_address": s.mail_address,
             "mail_server": s.mail_server,
         },
@@ -124,6 +125,11 @@ class AppApi:
             setattr(s, key, " ".join(str(value or "").split())[:200])
         elif key == "tour_done":
             s.tour_done = True
+        elif key == "dictation_key":
+            from hook import parse_keys
+
+            if parse_keys(str(value)):
+                s.dictation_key = str(value)
         elif key == "summary_time":
             from settings import clock_time
 
@@ -155,6 +161,17 @@ class AppApi:
             return json.dumps(check_key(s.provider, s.groq_key if s.provider == "groq" else s.api_key), ensure_ascii=True)
         except Exception:
             return json.dumps("unknown", ensure_ascii=True)
+
+    def list_models(self) -> str:
+        """The models the saved key can use, for the model field's suggestions."""
+        try:
+            from welcome import list_models
+
+            s = _settings()
+            key = s.groq_key if s.provider == "groq" else s.api_key
+            return json.dumps(list_models(s.provider, key, s.api_url), ensure_ascii=True)
+        except Exception:
+            return json.dumps([], ensure_ascii=True)
 
     def feedback(self, stars, text) -> str:
         """Settings → Rating & wishes: sends the stars and the wish."""

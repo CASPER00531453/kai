@@ -23,6 +23,8 @@ export class IslandStateMachine {
    * The island itself folds it again once the pointer has left.
    */
   openOnHover = false;
+  /** How long the pointer rests on the island before a hover opens it (Coucou 0.5.9). */
+  hoverRestMs = 350;
   /** Open because of a hover, until the user clicks inside it. */
   get openedByHover(): boolean {
     return this.byHover;
@@ -32,6 +34,7 @@ export class IslandStateMachine {
   private petitHide: number | null = null;
   private homeCollapse: number | null = null;
   private greetCollapse: number | null = null;
+  private hoverOpen: number | null = null;
 
   // ── Inputs ──────────────────────────────────────────────────────────────────
 
@@ -42,9 +45,16 @@ export class IslandStateMachine {
 
   mouseEntered() {
     if (this.openOnHover && (this.state === "hidden" || this.state === "petit") && !this.pinned) {
+      // A pointer passing over the island on its way somewhere opens nothing: only
+      // one that rests on it. Until then the island just peeks.
       this.cancelTimers();
-      this.byHover = true;
-      this.transition("home");
+      if (this.state === "hidden") this.transition("petit");
+      this.hoverOpen = window.setTimeout(() => {
+        this.hoverOpen = null;
+        if (this.state !== "petit" || this.pinned) return;
+        this.byHover = true;
+        this.transition("home");
+      }, this.hoverRestMs);
       return;
     }
     switch (this.state) {
@@ -65,6 +75,7 @@ export class IslandStateMachine {
   }
 
   mouseLeft() {
+    this.clear("hoverOpen");
     switch (this.state) {
       case "hidden":
         break;
@@ -152,7 +163,7 @@ export class IslandStateMachine {
     }, delay * 1000);
   }
 
-  private clear(which: "petitHide" | "homeCollapse" | "greetCollapse") {
+  private clear(which: "petitHide" | "homeCollapse" | "greetCollapse" | "hoverOpen") {
     const id = this[which];
     if (id != null) window.clearTimeout(id);
     this[which] = null;
@@ -162,6 +173,7 @@ export class IslandStateMachine {
     this.clear("petitHide");
     this.clear("homeCollapse");
     this.clear("greetCollapse");
+    this.clear("hoverOpen");
   }
 
   private transition(next: FsmState) {

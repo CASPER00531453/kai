@@ -147,6 +147,8 @@ class Settings:
         self.update_checks = True
         self.summary_enabled = True
         self.summary_time = "21:00"
+        self.mute_others = True
+        self.plan_in_compact = True
         self.feedback_key = ""
         self.admin = False
         self.load()
@@ -207,8 +209,10 @@ class Settings:
         self.mascot = str(data.get("mascot") or "ghost")[:20]
         self.mascot_color = str(data.get("mascot_color") or "#1a7fd4")[:7]
         self.dictation = bool(data.get("dictation", False))
+        from hook import parse_keys
+
         key = str(data.get("dictation_key") or "rctrl")
-        self.dictation_key = key if key in ("rctrl", "rshift", "ctrlwin") else "rctrl"
+        self.dictation_key = key if parse_keys(key) else "rctrl"
         engine = str(data.get("stt_engine") or "online")
         self.stt_engine = engine if engine in ("online", "whisper", "parakeet") else "online"
         self.ok_kai = bool(data.get("ok_kai", False))
@@ -234,6 +238,11 @@ class Settings:
         # The day's summary on the island, once a day at this time (HH:MM).
         self.summary_enabled = bool(data.get("summary_enabled", True))
         self.summary_time = clock_time(data.get("summary_time"), "21:00")
+        # The other apps go quiet while Kai listens to you (hush.py).
+        self.mute_others = bool(data.get("mute_others", True))
+        # The Claude plan's percentage in the compact island, next to the mascot.
+        self.plan_in_compact = bool(data.get("plan_in_compact", True))
+        _apply_hush(self)
         # Only the developer's Kai has one: it collects the ratings people send.
         self.feedback_key = _unseal(str(data.get("feedback_key") or ""))
         # Kai's owner, unlocked once in the chat (admin.py): only they are "patron".
@@ -296,6 +305,8 @@ class Settings:
             "update_checks": bool(self.update_checks),
             "summary_enabled": bool(self.summary_enabled),
             "summary_time": clock_time(self.summary_time, "21:00"),
+            "mute_others": bool(self.mute_others),
+            "plan_in_compact": bool(self.plan_in_compact),
             "feedback_key": _seal(self.feedback_key.strip()),
             "admin": _seal("owner") if self.admin else "",
         }
@@ -306,7 +317,16 @@ class Settings:
         os.replace(tmp, path)
         i18n.set_language(self.language)
         i18n.set_admin(self.admin)
+        _apply_hush(self)
         set_startup(self.start_with_windows)
+
+
+def _apply_hush(settings) -> None:
+    """Quiet while Kai listens, but never with "always listen": the mic never closes there,
+    and the other apps would stay muted for good."""
+    import hush
+
+    hush.enabled = bool(settings.mute_others) and not bool(getattr(settings, "mic_always", False))
 
 
 def clock_time(value, fallback: str) -> str:
@@ -333,16 +353,24 @@ def push_v2_hook(payload: dict) -> None:
         handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
 
 
-def push_v2_decision(word: str) -> None:
-    """Allow or deny clicked on the v2 island, for the process that holds the hook pipe."""
+DECISION_WORDS = ("allow", "always", "deny", "ask", "plan_auto", "plan_default", "plan_change")
+
+
+def push_v2_decision(word: str, request_id: str = "") -> None:
+    """A decision clicked on the v2 island, for the process that holds the hook pipe.
+
+    The request id says which of the waiting requests it is for.
+    """
     import time
 
     path = v2_file("v2_decision.json")
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as handle:
         word = str(word).strip()
-        known = word in ("allow", "deny", "ask") or (word.startswith("{") and len(word) < 60000)
-        json.dump({"n": time.time(), "word": word if known else "deny"}, handle)
+        # Every word the island can send: "always" and the plan choices were turned
+        # into "deny" here before, whatever was clicked.
+        known = word in DECISION_WORDS or (word.startswith("{") and len(word) < 60000)
+        json.dump({"n": time.time(), "word": word if known else "deny", "id": str(request_id or "")[:40]}, handle)
     os.replace(tmp, path)
 
 

@@ -30,7 +30,7 @@ VERSION_INFO = VSVersionInfo(
 
 datas = [('models/face_detection_yunet_2023mar.onnx', 'models'), ('_coucou_ui/dist', 'island_ui')]
 binaries = []
-hiddenimports = ['pythoncom', 'pywintypes', 'win32com.shell.shell', 'win32file', 'win32pipe', 'winrt.windows.media.control', 'winrt.windows.storage.streams', 'winrt.windows.foundation', 'winrt.windows.foundation.collections', 'comtypes', 'PIL.ImageTk', 'menu_window', 'app_window', 'kaicalendar', 'report', 'extras', 'desktop_chat', 'vitals', 'feedback', 'taskqueue', 'usage', 'daily', 'admin', 'clr_loader', 'pythonnet']
+hiddenimports = ['pythoncom', 'pywintypes', 'win32com.shell.shell', 'win32file', 'win32pipe', 'winrt.windows.media.control', 'winrt.windows.storage.streams', 'winrt.windows.foundation', 'winrt.windows.foundation.collections', 'comtypes', 'PIL.ImageTk', 'menu_window', 'app_window', 'kaicalendar', 'report', 'extras', 'desktop_chat', 'vitals', 'feedback', 'taskqueue', 'usage', 'daily', 'admin', 'hush', 'pycaw', 'pycaw.pycaw', 'clr_loader', 'pythonnet']
 tmp_ret = collect_all('sounddevice')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('miniaudio')

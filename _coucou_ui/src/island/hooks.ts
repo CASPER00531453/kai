@@ -7,15 +7,12 @@ import { Bridge, onEvent } from "../core/bridge";
 import { codePrompt, codeStop, codeToolEnd, codeToolStart } from "../core/codefeed";
 import { prefs, turkish } from "../core/prefs";
 import { Sound } from "../core/sound";
-import { State, type AskedQuestion } from "../core/state";
+import { State, type ApprovalInfo, type AskedQuestion } from "../core/state";
 import type { Island } from "./island";
 import { Focus } from "./focus";
 import { Queue } from "../views/queue";
 
 const CLAUDE_ID = "integration_claude";
-
-/** Clears the approval card if no decision was made before the hook gave up. */
-let pendingTimeout: number | null = null;
 
 interface HookPayload {
   hook_event_name?: string;
@@ -286,13 +283,58 @@ export function feedHooks(island: Island, payloads: unknown[]) {
   }
 }
 
+/** Most requests waiting at once, the one on the card included (agents.MAX_PENDING). */
+const MAX_PENDING = 5;
+
+/**
+ * The card is free: the oldest request still in line takes it, the way a new
+ * one comes up. False when nobody is waiting.
+ */
+export function nextApproval(island: Island): boolean {
+  const next = State.approvalQueue.shift();
+  if (!next) return false;
+  State.pendingApproval = next;
+  State.isPinned = true;
+  const view = next.questions ? "question" : "approval";
+  State.updateTask(CLAUDE_ID, view);
+  State.setPillBadge(CLAUDE_ID, State.approvalQueue.length ? "approval" : null);
+  Sound.play("approval");
+  island.alert(view);
+  void Bridge.log(`sıradaki kart açıldı: ${next.tool} (${State.approvalQueue.length} bekliyor)`);
+  State.notify();
+  return true;
+}
+
+/**
+ * Each request gives up on its own clock, on the card or still in line: a
+ * little before the host stops waiting for it. By id, so it never takes down a
+ * request that came later.
+ */
+function armRequestTimeout(island: Island, requestId: string, ms: number) {
+  window.setTimeout(() => {
+    if (State.approvalQueue.some((x) => x.requestId === requestId)) {
+      State.approvalQueue = State.approvalQueue.filter((x) => x.requestId !== requestId);
+      State.notify();
+      return;
+    }
+    if (State.pendingApproval?.requestId !== requestId) return;
+    State.pendingApproval = null;
+    if (nextApproval(island)) return;
+    State.isPinned = false;
+    island.dropPin();
+    State.updateTask(CLAUDE_ID, "working");
+    State.setPillBadge(CLAUDE_ID, null);
+    if (State.view === "approval" || State.view === "question") island.setView(State.defaultView());
+    State.notify();
+  }, ms);
+}
+
 /** The request was answered somewhere else (by voice, or in the terminal): take the card down. */
 function settleApproval(island: Island, sessionId: string | undefined) {
   // Another session finishing a tool says nothing about this request.
   if (!State.pendingApproval || State.pendingApproval.sessionId !== (sessionId ?? "")) return;
-  if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
-  pendingTimeout = null;
   State.pendingApproval = null;
+  if (nextApproval(island)) return;
   State.isPinned = false;
   island.dropPin();
   State.setPillBadge(CLAUDE_ID, null);
@@ -307,7 +349,7 @@ function handleHook(island: Island, payload: HookPayload) {
     if (payload.request_id) {
       void Bridge.log(`kart açılmadı: ada duraklatılmış (${payload.tool_name})`);
       // Inside Kai the decline is an "ask": Claude takes the question at once.
-      Bridge.approvalAsk();
+      Bridge.approvalAsk(payload.request_id);
     }
     return;
   }
@@ -486,22 +528,22 @@ function handleHook(island: Island, payload: HookPayload) {
 
       const requestId = payload.request_id ?? "";
       void Bridge.log(`kart istendi: ${payload.tool_name} req=${requestId} mod=${State.mode} odak=${State.focusId} bekleyen=${State.pendingApproval?.requestId ?? "-"} durdu=${State.paused}`);
-      // One card, one request. A second one must never quietly replace the first
-      // — that would leave a human staring at request B while request A waits for
-      // a decision nobody can give. Hand it straight back to the terminal.
-      if (State.pendingApproval && State.pendingApproval.requestId !== requestId) {
-        void Bridge.log(`kart açılmadı: önceki istek (${State.pendingApproval.requestId}) hâlâ bekliyor`);
-        if (requestId) void Bridge.approvalDecline(requestId);
+      // The same request again (already on the card or in line): leave it be.
+      if (State.pendingApproval?.requestId === requestId || State.approvalQueue.some((x) => x.requestId === requestId)) break;
+      // Several sessions can ask at once: they wait their turn on the card. Past
+      // the cap the newest goes back to its terminal.
+      if ((State.pendingApproval ? 1 : 0) + State.approvalQueue.length >= MAX_PENDING) {
+        void Bridge.log(`kart açılmadı: ${MAX_PENDING} istek zaten sırada`);
+        if (requestId) Bridge.approvalAsk(requestId);
         break;
       }
       upsert(cwd);
-      if (pendingTimeout != null) window.clearTimeout(pendingTimeout);
       const tool = payload.tool_name ?? "Tool";
       const input = payload.tool_input ?? {};
       // Claude Code asking a question is not a permission to grant: it gets the
       // question card, with the options to pick from.
       const questions = askedQuestions(tool, input);
-      State.pendingApproval = {
+      const info: ApprovalInfo = {
         requestId,
         sessionId: payload.session_id ?? "",
         tool,
@@ -511,6 +553,21 @@ function handleHook(island: Island, payload: HookPayload) {
         ...(payload.host_pid ? { hostPid: payload.host_pid } : {}),
         ...(payload.can_always ? { canAlways: true } : {}),
       };
+      // Coucou answers within 108 s or not at all; after that the terminal has
+      // taken over and the card would be lying. A little before the host gives
+      // up (45 s for a question sent ahead, else 108 s).
+      armRequestTimeout(island, requestId, payload.kai_ask ? 43_000 : 105_000);
+      if (State.pendingApproval) {
+        // Another card is up: this one waits in line, the pill badged, and the
+        // card on screen stays as it is.
+        State.approvalQueue.push(info);
+        State.setPillBadge(CLAUDE_ID, "approval");
+        Sound.play("approval");
+        if (requestId) void Bridge.approvalAck(requestId);
+        void Bridge.log(`kart sıraya girdi: ${tool} (${State.approvalQueue.length} bekliyor)`);
+        break;
+      }
+      State.pendingApproval = info;
       // The relay's short ack window closes in 800 ms; everything below this
       // line is synchronous, so the card really is up by the time it lands.
       if (requestId) void Bridge.approvalAck(requestId);
@@ -528,21 +585,6 @@ function handleHook(island: Island, payload: HookPayload) {
       }
       island.alert(questions ? "question" : "approval");
       void Bridge.log(`kart açıldı: ${questions ? `soru (${questions.length})` : "izin"} mod=${State.mode} görünüm=${State.view}`);
-      // Coucou answers within 108 s or not at all; after that the terminal has
-      // taken over and the card would be lying.
-      pendingTimeout = window.setTimeout(() => {
-        pendingTimeout = null;
-        if (!State.pendingApproval) return;
-        State.pendingApproval = null;
-        State.isPinned = false;
-        island.dropPin();
-        State.updateTask(CLAUDE_ID, "working");
-        State.setPillBadge(CLAUDE_ID, null);
-        if (State.view === "approval" || State.view === "question") island.setView(State.defaultView());
-        State.notify();
-      // A little before the host gives up (45 s for a question sent ahead, else
-      // 108 s): the card has to be gone before the next request can come in.
-      }, payload.kai_ask ? 43_000 : 105_000);
       break;
     }
 

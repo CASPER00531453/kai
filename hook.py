@@ -54,8 +54,38 @@ user32.PostMessageW.restype = wintypes.BOOL
 
 
 VK_ESCAPE = 0x1B
-# The dictation key: held to dictate, tapped twice to dictate hands-free.
-DICTATION_KEYS = {"rctrl": 0xA3, "rshift": 0xA1, "ctrlwin": -1}
+# The dictation key: held to dictate, tapped twice to dictate hands-free. Each
+# choice is the keys held together; "ctrlwin" takes either Ctrl with either Win.
+DICTATION_KEYS = {
+    "rctrl": (0xA3,), "rshift": (0xA1,), "ctrlwin": (-1,),
+    "lctrl": (0xA2,), "lshift": (0xA0,), "lalt": (0xA4,),
+}
+# AltGr is Kai's own talk key: never part of a dictation shortcut.
+NOT_IN_SHORTCUT = {VK_RMENU}
+# The left Ctrl Windows sends ahead of every AltGr: not a Ctrl the user pressed.
+ALTGR_CTRL_SCAN = 0x21D
+VK_MASK = 0xE8  # unassigned: tapped so a held Alt or Win opens no menu when let go
+
+
+def parse_keys(value: str) -> tuple[int, ...] | None:
+    """A preset's keys, or a shortcut of one's own: "keys:12+10+46" (virtual keys, hex), up to four."""
+    if value in DICTATION_KEYS:
+        return DICTATION_KEYS[value]
+    if not str(value).startswith("keys:"):
+        return None
+    try:
+        keys = tuple(int(part, 16) for part in value[5:].split("+") if part)
+    except ValueError:
+        return None
+    if not 1 <= len(keys) <= 4 or len(set(keys)) != len(keys) or any(k in NOT_IN_SHORTCUT or not 0 < k < 0xFF for k in keys):
+        return None
+    return keys
+
+
+def _same(vk: int, want: int) -> bool:
+    """A shortcut recorded as "Ctrl" or "Shift" takes either side."""
+    sides = {0x11: (0xA2, 0xA3), 0x10: (0xA0, 0xA1), 0x12: (0xA4, 0xA5)}
+    return vk == want or vk in sides.get(want, ())
 
 
 class AltGrHook:
@@ -70,6 +100,8 @@ class AltGrHook:
         self._held = False
         self._ctrl = False
         self._win = False
+        # The keys down right now, for a shortcut of several keys.
+        self._down: set[int] = set()
         self._proc = HOOKPROC(self._callback)
         self.hook = user32.SetWindowsHookExW(WH_KEYBOARD_LL, self._proc, None, 0)
         if not self.hook:
@@ -80,10 +112,10 @@ class AltGrHook:
         if vk == VK_ESCAPE and not is_up:
             user32.PostMessageW(self.hwnd, esc_msg, 0, 0)
             return
-        key = DICTATION_KEYS.get(self.dictation_key)
-        if key is None:
+        keys = parse_keys(self.dictation_key)
+        if keys is None:
             return
-        if key == -1:
+        if keys == (-1,):
             if vk in (0xA2, 0xA3, 0x11):
                 self._ctrl = not is_up
             elif vk in (0x5B, 0x5C):
@@ -91,10 +123,18 @@ class AltGrHook:
             else:
                 return
             pressed = self._ctrl and self._win
-        elif vk == key:
-            pressed = not is_up
         else:
-            return
+            if not any(_same(vk, k) for k in keys):
+                return
+            if is_up:
+                self._down.discard(vk)
+            else:
+                self._down.add(vk)
+            pressed = all(any(_same(d, k) for d in self._down) for k in keys)
+            if pressed and not self._held and any(k in (0xA4, 0xA5, 0x12, 0x5B, 0x5C) for k in keys):
+                # Letting go of a held Alt or Win would open a menu: a key nobody uses masks it.
+                user32.keybd_event(VK_MASK, 0, 0, 0)
+                user32.keybd_event(VK_MASK, 0, 2, 0)
         # Held keys repeat their key-down; only the change is news.
         if pressed != self._held:
             self._held = pressed
@@ -108,16 +148,36 @@ class AltGrHook:
                 vk = int(kb.vkCode)
                 # Keys Kai types itself (the paste) are not the user's.
                 injected = bool(kb.flags & 0x10)
-                if self.dictation and not injected:
+                # The left Ctrl that comes with AltGr is not the user's Ctrl.
+                fake_ctrl = vk == 0xA2 and kb.scanCode == ALTGR_CTRL_SCAN
+                if self.dictation and not injected and not fake_ctrl:
                     self._dictation(vk, is_up)
+                    # A shortcut's own letter (Alt+Shift+F, F9) is kept from the app in front.
+                    if self._swallows(vk):
+                        return 1
                 if vk == VK_RMENU:
                     msg = self.on_up if is_up else self.on_down
                     user32.PostMessageW(self.hwnd, msg, 0, 0)
-                elif not is_up and vk not in MODIFIERS and w_param in (WM_KEYDOWN, WM_SYSKEYDOWN):
+                elif not is_up and vk not in MODIFIERS and w_param in (WM_KEYDOWN, WM_SYSKEYDOWN) and not self._in_shortcut(vk):
                     user32.PostMessageW(self.hwnd, self.on_other, vk, 0)
             except Exception:
                 pass
         return user32.CallNextHookEx(self.hook, n_code, w_param, l_param)
+
+    def _in_shortcut(self, vk: int) -> bool:
+        """A key of the dictation shortcut itself is no "other key" that cancels it."""
+        keys = parse_keys(self.dictation_key) if self.dictation else None
+        return bool(keys) and keys != (-1,) and any(_same(vk, k) for k in keys)
+
+    def _swallows(self, vk: int) -> bool:
+        keys = parse_keys(self.dictation_key)
+        if not keys or keys == (-1,) or vk in MODIFIERS:
+            return False
+        if not any(_same(vk, k) for k in keys):
+            return False
+        # Only while the rest of the shortcut is held, or the key could never be typed.
+        rest = [k for k in keys if not _same(vk, k)]
+        return all(any(_same(d, k) for d in self._down) for k in rest)
 
     def close(self) -> None:
         if self.hook:

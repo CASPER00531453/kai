@@ -115,15 +115,15 @@ export const Bridge = {
     callOrThrow<string>("hooks_apply", { install, fingerprint }),
 
   approvalDecision: (requestId: string, decision: "allow" | "always" | "deny" | "plan_auto" | "plan_default" | "plan_change") => {
-    const api = (window as unknown as { pywebview?: { api?: { decide?: (word: string) => void } } })
+    const api = (window as unknown as { pywebview?: { api?: { decide?: (word: string, requestId: string) => void } } })
       .pywebview?.api;
-    if (api?.decide) return void api.decide(decision);
+    if (api?.decide) return void api.decide(decision, requestId);
     return call<void>("approval_decision", { requestId, decision });
   },
   /** Answers Claude Code's question. The relay checks the answers against what was asked. */
-  approvalAnswer: (answers: Record<string, string | string[]>) => {
-    const api = (window as unknown as { pywebview?: { api?: { decide?: (word: string) => void } } }).pywebview?.api;
-    api?.decide?.(JSON.stringify({ answers }));
+  approvalAnswer: (requestId: string, answers: Record<string, string | string[]>) => {
+    const api = (window as unknown as { pywebview?: { api?: { decide?: (word: string, requestId: string) => void } } }).pywebview?.api;
+    api?.decide?.(JSON.stringify({ answers }), requestId);
   },
   /** Brings a session's terminal or editor to the front. */
   focusHost: (pid: number) => {
@@ -131,9 +131,9 @@ export const Bridge = {
     api?.focus_host?.(pid);
   },
   /** No decision: Claude Code asks in the terminal. */
-  approvalAsk: () => {
-    const api = (window as unknown as { pywebview?: { api?: { decide?: (word: string) => void } } }).pywebview?.api;
-    api?.decide?.("ask");
+  approvalAsk: (requestId: string) => {
+    const api = (window as unknown as { pywebview?: { api?: { decide?: (word: string, requestId: string) => void } } }).pywebview?.api;
+    api?.decide?.("ask", requestId);
   },
   /** Lets the user drag a box on the screen; the picture arrives like a dropped file. */
   snip: () => {

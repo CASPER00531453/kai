@@ -23,6 +23,8 @@ class Microphone:
         self._opening = False
         self._speech_at = 0.0
         self._spoke = 0.0
+        # The other apps were muted for this listen (hush.py); given back on stop.
+        self._hushed = False
 
     def start(self) -> None:
         """Open the mic if it is not already open. A second call must not wipe the buffer."""
@@ -37,6 +39,14 @@ class Microphone:
             self._spoke = 0.0
             self._loud = 0
             self.error = None
+            take_hush = not self._hushed
+            self._hushed = True
+        if take_hush:
+            import hush
+
+            if not hush.begin():
+                with self._lock:
+                    self._hushed = False
         threading.Thread(target=self._open, args=(gen,), daemon=True).start()
 
     def _open(self, gen: int) -> None:
@@ -101,7 +111,13 @@ class Microphone:
             self._chunks = []
             self._speech_at = 0.0
             self._spoke = 0.0
+            give_back = self._hushed
+            self._hushed = False
         self.level = 0.0
+        if give_back:
+            import hush
+
+            hush.end()
         if stream is not None:
             try:
                 stream.stop()

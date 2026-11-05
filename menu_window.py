@@ -141,8 +141,15 @@ def _fit(width: int, height: int) -> None:
     width = min(width, mon_w)
     height = min(height, mon_h)
     x = mon.left + max(0, (mon_w - width) // 2)
-    y = mon.top
+    y = mon.top + _top_inset(info) if monitor else mon.top
     user32.SetWindowPos(hwnd, HWND_TOPMOST, x, y, width, height, SWP_SHOWWINDOW)
+
+
+def _top_inset(info) -> int:
+    """How far a taskbar docked at the top of this display pushes the island down
+    (Coucou #956): read from the work area, so an auto-hidden taskbar moves nothing."""
+    inset = info.rcWork.top - info.rcMonitor.top
+    return inset if 0 <= inset < 200 else 0
 
 
 def _force(hwnd: int, css_w: int, css_h: int) -> None:
@@ -348,6 +355,7 @@ def _prefs(settings, agent_note: str = "") -> str:
             "clock": bool(settings.show_clock),
             "alertsAll": bool(settings.alerts_all_pills),
             "feelsPc": bool(settings.feels_pc),
+            "planCompact": bool(settings.plan_in_compact),
         },
         ensure_ascii=True,
     )
@@ -679,10 +687,10 @@ class IslandApi:
         except OSError:
             pass
 
-    def decide(self, word) -> None:
+    def decide(self, word, request_id="") -> None:
         from settings import push_v2_decision
 
-        push_v2_decision(str(word))
+        push_v2_decision(str(word), str(request_id or ""))
 
     def agent_set(self, agent, on) -> str:
         """Connect or disconnect another coding agent. Only ever called from a click."""

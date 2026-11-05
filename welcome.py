@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import threading
 import tkinter as tk
 import urllib.error
@@ -47,6 +48,33 @@ def check_key(provider: str, key: str, timeout: float = 8) -> str:
         return "bad" if error.code in (401, 403) else "unknown"
     except Exception:
         return "unknown"
+
+
+def list_models(provider: str, key: str, custom_url: str = "", timeout: float = 8) -> list[str]:
+    """The models this key can use, from the company's own list (Coucou #1000).
+
+    OpenAI-compatible services and Anthropic both answer /models with {"data": [{"id"}]}.
+    Empty when there is no key or the list cannot be read.
+    """
+    _name, url, _model, wire = PROVIDERS.get(provider, PROVIDERS["groq"])
+    url = (custom_url.strip() if provider == "custom" else url) or url
+    if not url or not key:
+        return []
+    headers = {"User-Agent": f"Kai/{VERSION}"}
+    if wire == "anthropic":
+        headers.update({"x-api-key": key, "anthropic-version": "2023-06-01"})
+    else:
+        headers["Authorization"] = f"Bearer {key}"
+    address = url.rstrip("/") + "/models" + ("?limit=100" if wire == "anthropic" else "")
+    try:
+        with urllib.request.urlopen(urllib.request.Request(address, headers=headers), timeout=timeout) as response:
+            data = json.loads(response.read().decode("utf-8", errors="replace"))
+    except Exception:
+        return []
+    rows = data.get("data") if isinstance(data, dict) else None
+    names = [str(row.get("id")) for row in rows or [] if isinstance(row, dict) and row.get("id")]
+    # Gemini lists "models/gemini-…"; the chat endpoint wants the bare name.
+    return sorted({name.removeprefix("models/") for name in names})[:300]
 
 
 def needed(settings: Settings) -> bool:

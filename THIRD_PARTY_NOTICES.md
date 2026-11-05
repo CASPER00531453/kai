@@ -16,11 +16,11 @@ own projects, linked by name on PyPI or npm.
 |---|---|
 | aiohttp, aiosignal, frozenlist, multidict, propcache, yarl | Apache-2.0 (aiohttp: Apache-2.0 AND MIT) |
 | aiohappyeyeballs, typing_extensions | PSF-2.0 |
-| altgraph, attrs, bottle, comtypes, miniaudio, pefile, proxy_tools, pythonnet, setuptools, six, sounddevice, tabulate, winrt-* | MIT |
+| altgraph, attrs, bottle, comtypes, miniaudio, pefile, proxy_tools, pycaw, pythonnet, setuptools, six, sounddevice, tabulate, winrt-* | MIT |
 | certifi | MPL-2.0 |
 | cffi | MIT-0 |
 | clr_loader | MIT |
-| click, idna, pycparser, pypdf, pywin32-ctypes, SpeechRecognition | BSD-3-Clause |
+| click, idna, psutil, pycparser, pypdf, pywin32-ctypes, SpeechRecognition | BSD-3-Clause |
 | icalendar | BSD-2-Clause |
 | numpy | BSD-3-Clause (with 0BSD, MIT, Zlib, CC0-1.0 parts) |
 | opencv-python-headless, PyAudioWPatch, sentencepiece, sherpa-onnx, tzdata, uiautomation | Apache-2.0 |

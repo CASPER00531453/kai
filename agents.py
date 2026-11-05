@@ -31,7 +31,12 @@ EVENTS = (
 _lock = threading.Lock()
 # When a question sent ahead went unanswered, per session.
 _ask_missed: dict[str, float] = {}
-_permit: dict | None = None
+# Requests waiting for the island, oldest first, by request id. Several sessions
+# can ask at once: they wait their turn on the card instead of going back to the
+# terminal (Coucou #984).
+_permits: dict[str, dict] = {}
+MAX_PENDING = 5
+_request_seq = 0
 _stop = False
 _paused = False
 
@@ -87,11 +92,11 @@ def summarize(payload: dict) -> str:
     return "Claude"
 
 
-def answer(word: str) -> None:
-    global _permit
+def answer(word: str, request_id: str = "") -> None:
+    """The decision for the request on the card; without an id, the oldest one waiting."""
     with _lock:
-        pending = _permit
-        _permit = None
+        key = request_id if request_id in _permits else next(iter(_permits), None)
+        pending = _permits.pop(key, None) if key else None
     if not pending:
         return
     # allow, deny, "ask" (hand it back to the terminal) or the answers to a question.
@@ -154,7 +159,7 @@ def _forward(payload: dict) -> None:
 def _client(pipe, on_event) -> None:
     import win32file
 
-    global _permit
+    global _request_seq
     try:
         raw = _read_line(pipe)
         payload = json.loads(raw.decode("utf-8", errors="replace"))
@@ -208,14 +213,19 @@ def _client(pipe, on_event) -> None:
             return
         box = {"event": threading.Event(), "word": ""}
         with _lock:
-            busy = _permit is not None
+            busy = len(_permits) >= MAX_PENDING
             if not busy:
-                _permit = box
+                _request_seq += 1
+                request_id = f"{time.time():.3f}-{_request_seq}"
+                _permits[request_id] = box
+                waiting = len(_permits) - 1
         if busy:
-            _log(f"istek atlandı, başka bir kart bekliyor: {payload.get('tool_name')}")
+            _log(f"istek atlandı, {MAX_PENDING} istek zaten sırada: {payload.get('tool_name')}")
             return
+        if waiting:
+            _log(f"istek sıraya girdi, önünde {waiting} istek var: {payload.get('tool_name')}")
         # Only a request Kai can actually answer gets a card on the v2 island.
-        payload["request_id"] = f"{time.time():.3f}"
+        payload["request_id"] = request_id
         kind = "soru" if payload.get("kai_ask") else "izin"
         _log(f"{kind} geldi: {payload.get('tool_name')}")
         asked_at = time.time()
@@ -229,8 +239,8 @@ def _client(pipe, on_event) -> None:
             if payload.get("kai_ask"):
                 _ask_missed[str(payload.get("session_id") or "")] = time.time()
             with _lock:
-                if _permit is box:
-                    _permit = None
+                if _permits.get(request_id) is box:
+                    del _permits[request_id]
             return
         word = box["word"] or "deny"
         _log(f"{kind}: {'cevaplandı' if word.startswith('{') else word} ({time.time() - asked_at:.0f} sn)")

@@ -35,6 +35,76 @@ const PAGES: Page[] = [
   { id: "shortcuts", group: "kai", title: () => L("Kısayollar", "Shortcuts"), sub: () => L("Hepsi bir arada.", "All in one place."), color: "#f4f5f7", icon: "M3 7h18v10H3zM7 11h1M11 11h2M16 11h1M7 14h10" },
 ];
 
+// What each page holds, for the settings search: the words its rows use.
+const TERMS: Record<string, string> = {
+  dictation: "dikte tuş kısayol sağ sol ctrl shift alt win eller serbest yapıştır panoda sessiz sus diğer sesler konuşurken mikrofon whisper parakeet ses tanıma model dictation key shortcut hands-free paste quiet mute microphone speech recognition",
+  notes: "not alıcı kayıt görüşme döküm özet yapılacaklar toplantı notetaker record call transcript summary meeting",
+  stats: "istatistik kelime zaman kazanç statistics words time saved",
+  dictionary: "sözlük isim kelime düzelt dictionary names words fix",
+  snippets: "kısayol metin snippet şablon snippets template",
+  styles: "stil uygulama temizle resmi samimi styles app formal casual",
+  general: "genel dil türkçe english windows başlat açılış ses efekt adada saat tüm haplar uyarı bilgisayar hisseder günün özeti saat plan kullanımı küçük ada sürüm güncelle lisans casper general language startup sound clock alerts pills feels pc daily summary plan usage compact version update license",
+  mascot: "maskot renk kostüm şapka gözlük kıyafet mascot colour color outfit hat glasses",
+  agents: "ajan claude code codex gemini cursor kanca hook her zaman izin claude desktop yanıt hazır agents permission always",
+  chat: "sohbet yapay zeka sağlayıcı api anahtar model groq openai anthropic gemini mistral ses elevenlabs sesli cevap chat ai provider key voice speak",
+  okkai: "ok kai uyandır ad söyle hassasiyet wake word sensitivity",
+  integrations: "entegrasyon e-posta mail takvim spotify github stripe vercel notion hava integrations email calendar weather",
+  feedback: "istek değerlendirme yıldız puan fikir gelen kutusu rating wishes stars inbox",
+  shortcuts: "kısayollar tuşlar altgr alt shift çeviri ekran shortcuts keys translate screen",
+};
+
+/** Lower case the Turkish way, so "İzin" finds "izin". */
+const fold = (s: string) => s.toLocaleLowerCase("tr");
+
+function matches(p: Page, query: string): boolean {
+  const q = fold(query.trim());
+  if (!q) return true;
+  const text = fold(`${p.title()} ${p.sub()} ${TERMS[p.id] ?? ""}`);
+  return q.split(/\s+/).every((word) => text.includes(word));
+}
+
+// The search box lives across renders, so typing in it never loses the focus.
+let query = "";
+const search = h("input", { class: "a-input a-nav-search", type: "search", spellcheck: "false" }) as HTMLInputElement;
+search.addEventListener("input", () => {
+  query = search.value;
+  applySearch();
+});
+search.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    search.value = query = "";
+    applySearch();
+  } else if (e.key === "Enter") {
+    const first = PAGES.find((p) => matches(p, query));
+    if (first) go(first.id);
+  }
+});
+
+/** Hides the pages the search does not find, and points at the row on the page shown. */
+function applySearch() {
+  root.querySelectorAll<HTMLElement>(".a-nav-item").forEach((item) => {
+    const p = PAGES.find((x) => x.id === item.dataset.id);
+    item.style.display = !p || matches(p, query) ? "" : "none";
+  });
+  root.querySelectorAll<HTMLElement>(".a-nav-group").forEach((g) => {
+    let next = g.nextElementSibling as HTMLElement | null;
+    let any = false;
+    while (next && next.classList.contains("a-nav-item")) {
+      if (next.style.display !== "none") any = true;
+      next = next.nextElementSibling as HTMLElement | null;
+    }
+    g.style.display = any ? "" : "none";
+  });
+  const q = fold(query.trim());
+  let first: HTMLElement | null = null;
+  root.querySelectorAll<HTMLElement>(".a-main .a-row").forEach((r) => {
+    const hit = q.length > 1 && fold(r.textContent ?? "").includes(q);
+    r.classList.toggle("a-row-hit", hit);
+    if (hit && !first) first = r;
+  });
+  (first as HTMLElement | null)?.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
 let state: AppState | null = null;
 let flowData: FlowData | null = null;
 let current = "dictation";
@@ -89,11 +159,13 @@ function render() {
 
   const nav = h("nav", { class: "a-nav" },
     h("div", { class: "a-brand" }, logoCanvas, h("div", {}, h("b", { text: "Kai" }), h("span", { text: `v${state.update.current || state.island.version}` }))),
+    search,
   );
+  search.placeholder = L("Ayarlarda ara", "Search settings");
   for (const group of ["flow", "kai"] as const) {
     nav.append(h("div", { class: "a-nav-group", text: group === "flow" ? "FLOW" : "KAI" }));
     for (const p of PAGES.filter((x) => x.group === group)) {
-      const b = h("button", { class: `a-nav-item${p.id === page.id ? " on" : ""}`, style: `--c:${p.color}` }, icon(p.icon), h("span", { text: p.title() }));
+      const b = h("button", { class: `a-nav-item${p.id === page.id ? " on" : ""}`, style: `--c:${p.color}`, "data-id": p.id }, icon(p.icon), h("span", { text: p.title() }));
       b.addEventListener("click", () => go(p.id));
       nav.append(b);
     }
@@ -131,6 +203,7 @@ function render() {
   root.dataset.page = page.id;
   root.append(nav, main);
   if (samePage) main.scrollTop = scroll;
+  if (query) applySearch();
   if (!samePage || !band.el.dataset.page) {
     band.el.dataset.page = page.id;
     requestAnimationFrame(() => band.setup(page.color, parseMascot(state?.island.mascot)));

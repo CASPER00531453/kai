@@ -38,7 +38,7 @@ export interface AppState {
     tour_done: boolean; mail_address: string; mail_server: string;
     show_clock: boolean; alerts_all_pills: boolean; feels_pc: boolean;
     claude_desktop_chat: boolean; update_checks: boolean;
-    summary_enabled: boolean; summary_time: string;
+    summary_enabled: boolean; summary_time: string; mute_others: boolean; plan_in_compact: boolean;
   };
   brain: {
     provider: string; providers: [string, string][]; api_url: string; api_model: string;
@@ -102,6 +102,7 @@ export const Api = {
   set: (key: string, value: unknown) => call<AppState | null>("set", null, key, value),
   secret: (key: string, value: string) => call<AppState | null>("secret", null, key, value),
   checkKey: () => call<string>("check_key", "unknown"),
+  listModels: () => call<string[]>("list_models", []),
   modelDownload: (id: string) => call<unknown>("model_download", null, id),
   modelRemove: (id: string) => call<unknown>("model_remove", null, id),
   flow: () => call<FlowData | null>("flow_get", null),

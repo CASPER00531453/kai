@@ -2281,3 +2281,32 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .summary-icon { width: 16px; flex: none; text-align: center; }
 @keyframes summary-in { to { opacity: 1; transform: none; } }
+
+/* The Claude plan's percentage in the compact island (island.ts, Coucou #979). */
+#compact-plan {
+  --plan: #6b7079;
+  position: absolute;
+  top: 16px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--plan) 30%, transparent);
+  border-radius: 999px;
+  background: #0e0f11;
+  color: rgba(255, 255, 255, 0.72);
+  font: 600 10px var(--font);
+  font-variant-numeric: tabular-nums;
+  line-height: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease-in-out, right 0.2s ease, background 0.18s;
+  z-index: 2;
+}
+#compact-plan:hover { background: color-mix(in srgb, var(--plan) 20%, transparent); }
+#compact-plan i { width: 6px; height: 6px; border-radius: 50%; background: var(--plan); flex: none; }
+/* The brand or the clock in the middle keeps clear of the gauge. */
+.with-plan #kai-brand, .with-plan #island-clock { right: 96px; }

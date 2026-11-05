@@ -4,6 +4,7 @@ import { BotEngine } from "../mochi/engine";
 import { PICKABLE, mascotLabel, type Mascot } from "../mochi/mascots";
 import { BODY_COLORS, hueColor, setBodyColor } from "../mochi/palette";
 import { h } from "../views/dom";
+import { keyLabel } from "./keys";
 import { Api } from "./api";
 import type { Ctx } from "./flowpages";
 import { enginePicker, modelsGrid } from "./flowpages";
@@ -36,6 +37,7 @@ export function generalPage(ctx: Ctx): HTMLElement {
     card(
       L("Ada", "Island"),
       row(L("Adada saat", "Clock in the island"), L("Ada küçükken ortasında tarih ve saat.", "The date and time in the middle of the island when it is compact."), toggle(f.show_clock, (on) => void set("show_clock", on))),
+      row(L("Küçük adada plan kullanımı", "Plan usage in the compact island"), L("Claude planının yüzde kaçı gitti, ada küçükken de görünür. Tıklayınca ayrıntısı açılır.", "How much of the Claude plan is used, even when the island is compact. Click it for the details."), toggle(f.plan_in_compact, (on) => void set("plan_in_compact", on))),
       row(L("Tüm hapların uyarıları", "Alerts from every pill"), L("Başka bir hap bitince ya da hata verince ada bir anlığına açılır, sonra senin hapın geri gelir.", "Another pill that finishes or fails opens the island for a moment, then your pill comes back."), toggle(f.alerts_all_pills, (on) => void set("alerts_all_pills", on))),
       row(L("Kai bilgisayarı hisseder", "Kai feels your PC"), L("İşlemci tavan yapınca panik, ısınınca kızarma, bellek dolunca şişme, pil bitince uyuklama. Kai'nin üstüne gelince nedenini yazar.", "Panics under full processor load, flushes when warm, puffs up when memory is short, dozes on a low battery. Point at Kai to see why."), toggle(f.feels_pc, (on) => void set("feels_pc", on))),
       row(L("Günün özeti", "Daily summary"), L("Her akşam bu saatte Kai gözlüğünü takar, günün raporunu okur: Claude ile ne yaptın, kaç dosya değişti, yarın neler var.", "Every evening at this time Kai puts its glasses on and reads you the day's report: what you did with Claude, how many files changed, what's on tomorrow."),
@@ -157,6 +159,21 @@ export function agentsPage(ctx: Ctx): HTMLElement {
 
 // ── Chat (the brain) ────────────────────────────────────────────────────────
 
+/**
+ * The model's name, with the company's own list as suggestions (Coucou #1000).
+ * The saved choice stays as it is, even when it is not in the list.
+ */
+function modelField(value: string, change: (v: string) => void): HTMLElement {
+  const field = input(value, "", change, { wide: true });
+  const list = h("datalist", { id: "a-models" });
+  field.setAttribute("list", "a-models");
+  void Api.listModels().then((names) => {
+    list.replaceChildren(...names.map((name) => h("option", { value: name })));
+    if (names.length) field.placeholder = L(`${names.length} model, tıkla ve seç`, `${names.length} models, click to pick`);
+  });
+  return h("div", { class: "a-inline", style: "flex:1" }, field, list);
+}
+
 export function chatPage(ctx: Ctx): HTMLElement {
   const b = ctx.state.brain;
   const i = ctx.state.island;
@@ -176,7 +193,7 @@ export function chatPage(ctx: Ctx): HTMLElement {
       L("Yapay zekâ", "AI"),
       row(L("Sağlayıcı", "Provider"), L("Sohbet, stiller ve not özetleri bununla yazılır.", "Chat, styles and note summaries use it."), select(b.providers.map(([id, name]) => [name, id]), b.provider, (v) => void set("provider", v))),
       row(L("API anahtarı", "API key"), null, key),
-      row(L("Model", "Model"), null, input(b.api_model, "", (v) => void set("api_model", v), { wide: true })),
+      row(L("Model", "Model"), L("Anahtarın çalışıyorsa kullanabileceğin modeller listelenir; istersen adını kendin de yazabilirsin.", "With a working key the models you can use are listed; you can also type a name yourself."), modelField(b.api_model, (v) => void set("api_model", v))),
       b.provider === "custom" ? row(L("Adres", "URL"), null, input(b.api_url, "https://…/v1", (v) => void set("api_url", v), { wide: true })) : null,
     ),
     card(
@@ -295,7 +312,7 @@ function calendarCard(ctx: Ctx): HTMLElement {
 // ── Shortcuts ───────────────────────────────────────────────────────────────
 
 export function shortcutsPage(ctx: Ctx): HTMLElement {
-  const key = ctx.state.flow.dictation_key === "rshift" ? [L("Sağ Shift", "Right Shift")] : ctx.state.flow.dictation_key === "ctrlwin" ? ["Ctrl", "Win"] : [L("Sağ Ctrl", "Right Ctrl")];
+  const key = keyLabel(ctx.state.flow.dictation_key);
   const items: [HTMLElement, string][] = [
     [keycap("AltGr"), L("Basılı tut ve Kai ile konuş", "Hold and talk to Kai")],
     [keycap(...key), L("Basılı tut: dikte (Flow)", "Hold: dictate (Flow)")],
