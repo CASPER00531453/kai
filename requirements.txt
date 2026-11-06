@@ -24,3 +24,4 @@ recurring-ical-events>=3.8
 pycaw>=20240210
 cryptography>=44
 qrcode>=8
+websocket-client>=1.8

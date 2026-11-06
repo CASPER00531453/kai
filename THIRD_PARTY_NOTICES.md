@@ -9,7 +9,7 @@ own projects, linked by name on PyPI or npm.
 | Project | License | Notes |
 |---|---|---|
 | [Coucou](https://github.com/Louis-CFM/coucou) | MIT | The island and window interface (`_coucou_ui`). Only the code: Coucou's name, the Mochi character, its icons and its sounds are not used. |
-| [Coucou for Android](https://github.com/Louis-CFM/coucou/tree/main/android) by Rhytam Biswas | MIT | The Android app (`android/`). Only the code; the phone link's protocol v1 (`phone_link.py`). |
+| [Coucou for Android](https://github.com/Louis-CFM/coucou/tree/main/android) by Rhytam Biswas | MIT | The Android app (`android/`). Only the code; the phone link's protocol v1 (`phone_link.py`), the relay link (`relay_link.py`) and the Cloudflare relay Worker (`server/relay`). |
 
 ## Bundled Python libraries
 
@@ -25,7 +25,7 @@ own projects, linked by name on PyPI or npm.
 | cryptography | Apache-2.0 or BSD-3-Clause |
 | icalendar | BSD-2-Clause |
 | numpy | BSD-3-Clause (with 0BSD, MIT, Zlib, CC0-1.0 parts) |
-| opencv-python-headless, PyAudioWPatch, sentencepiece, sherpa-onnx, tzdata, uiautomation | Apache-2.0 |
+| opencv-python-headless, PyAudioWPatch, sentencepiece, sherpa-onnx, tzdata, uiautomation, websocket-client | Apache-2.0 |
 | packaging, python-dateutil | Apache-2.0 / BSD dual |
 | paho-mqtt | EPL-2.0 or BSD-3-Clause |
 | pillow | MIT-CMU (HPND) |

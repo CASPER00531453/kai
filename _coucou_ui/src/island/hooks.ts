@@ -342,6 +342,15 @@ function settleApproval(island: Island, sessionId: string | undefined) {
 }
 
 function handleHook(island: Island, payload: HookPayload) {
+  // The phone started or stopped looking at the screen or the camera (phone_view.py).
+  if (payload.hook_event_name === "KaiPhoneView") {
+    const source = (payload as { source?: string }).source;
+    State.phoneView = source === "camera" || source === "screen" ? source : null;
+    void Bridge.log(`telefon görüntüsü: ${State.phoneView ?? "bitti"}`);
+    if (State.phoneView) island.reveal();
+    State.notify();
+    return;
+  }
   // Answered on the phone (phone_link.py): the card, or its place in line, goes.
   if (payload.hook_event_name === "KaiResolved") {
     const id = payload.request_id ?? "";

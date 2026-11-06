@@ -56,6 +56,9 @@ interface LinkListener {
     fun onChatDelta(id: String, text: String) {}
     fun onChatDone(id: String, text: String?) {}
     fun onChatError(id: String, reason: String, message: String) {}
+    /** Kai: the computer's screen or camera. */
+    fun onViewState(source: String, active: Boolean, reason: String) {}
+    fun onFrame(part: ServerMsg.Frame) {}
 }
 
 /** What the UI talks to: the real [LinkClient] or the offline [DemoLink]. */
@@ -85,6 +88,11 @@ interface DesktopLink {
     fun chatSend(id: String, model: String, text: String): Boolean = false
     fun chatCancel(id: String) {}
     fun chatReset() {}
+
+    // Kai: look at the computer's screen or camera (capability `view`).
+    fun viewStart(source: String): Boolean = false
+    fun viewStop() {}
+    fun frameAck(id: Long) {}
 }
 
 /** Opens the (TLS) connection to the desktop. Swappable so tests can use plain sockets. */
@@ -147,6 +155,7 @@ class LinkClient(
     @Volatile private var servicesOffered = false
     /** The computer's welcome offered `relay` on this connection. */
     @Volatile private var relayOffered = false
+    @Volatile private var viewOffered = false
     @Volatile private var socket: Socket? = null
     /** When the last line arrived (the clock of [clockMs]); a liveness check compares it with the moment it asked. */
     @Volatile private var lastInboundMs = 0L
@@ -251,6 +260,10 @@ class LinkClient(
     override fun chatCancel(id: String) { queue(ClientMsg.ChatCancel(id)) }
     override fun chatReset() { queue(ClientMsg.ChatReset) }
 
+    override fun viewStart(source: String): Boolean = viewOffered && queue(ClientMsg.ViewStart(source))
+    override fun viewStop() { queue(ClientMsg.ViewStop) }
+    override fun frameAck(id: Long) { queue(ClientMsg.FrameAck(id)) }
+
     private fun send(m: ClientMsg) {
         val o = out ?: throw IOException("not connected")
         synchronized(writeLock) {
@@ -298,6 +311,7 @@ class LinkClient(
                 recapOffered = false
                 servicesOffered = false
                 relayOffered = false
+                viewOffered = false
                 runCatching { socket?.close() }
                 socket = null
                 approvals.clear()
@@ -345,6 +359,7 @@ class LinkClient(
                     recapOffered = Protocol.CAP_RECAP in msg.caps
                     servicesOffered = Protocol.CAP_SERVICES in msg.caps
                     relayOffered = Protocol.CAP_RELAY in msg.caps
+                    viewOffered = Protocol.CAP_VIEW in msg.caps
                     listener.onState(LinkState.CONNECTED)
                     listener.onWelcome(msg.desktopName, msg.os)
                     listener.onCaps(msg.caps)
@@ -369,6 +384,8 @@ class LinkClient(
                 is ServerMsg.ChatDelta -> listener.onChatDelta(msg.id, msg.text)
                 is ServerMsg.ChatDone -> listener.onChatDone(msg.id, msg.text)
                 is ServerMsg.ChatError -> listener.onChatError(msg.id, msg.reason, msg.message)
+                is ServerMsg.ViewState -> if (viewOffered) listener.onViewState(msg.source, msg.active, msg.reason)
+                is ServerMsg.Frame -> if (viewOffered) listener.onFrame(msg)
                 is ServerMsg.Error -> { listener.onError(msg.code, msg.message); if (msg.code == "auth") { fatal = true; return } }
             }
         }

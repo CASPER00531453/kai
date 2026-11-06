@@ -41,8 +41,11 @@ IDLE_TIMEOUT = 20 * 60.0
 APPROVAL_TTL = 115.0
 MAX_COMMAND = 500
 CLAUDE_PILL = "integration_claude"
+# Tailscale gives each of the user's devices an address here; reachable only inside their tailnet.
+TAILSCALE = ipaddress.ip_network("100.64.0.0/10")
+ROUTES = ("lan", "tailscale", "cloudflare")
 # Optional features this computer can offer a phone that asks for them.
-CAPS = ("answers", "details", "usage")
+CAPS = ("answers", "details", "usage", "view")
 
 _lock = threading.Lock()
 _server: "_Server | None" = None
@@ -135,6 +138,20 @@ def _token() -> str:
     return _unseal(_load_store().get("token") or "")
 
 
+def tailscale_address() -> str:
+    """This computer's Tailscale address (100.x.y.z), or "" without Tailscale."""
+    try:
+        import psutil
+
+        for addresses in psutil.net_if_addrs().values():
+            for a in addresses:
+                if a.family == socket.AF_INET and ipaddress.ip_address(a.address) in TAILSCALE:
+                    return a.address
+    except Exception:
+        pass
+    return ""
+
+
 def lan_address() -> str:
     """This computer's address on the local network (no packet is sent)."""
     probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -155,6 +172,10 @@ def pair_again() -> dict:
     data = _load_store()
     data["token"] = _seal(secrets.token_urlsafe(32))
     data["paired_at"] = time.time()
+    # A new room and key for the relay too: the old phone is cut off there as well.
+    import relay_link
+
+    relay_link.new_room(data)
     _save_store(data)
     _tell_main()
     return pairing()
@@ -185,7 +206,19 @@ def pairing() -> dict:
         return {"link": "", "qr": ""}
     _cert, _key, fp = _identity()
     port = _server.port if _server else int(_read_status().get("port") or PORT)
-    query = urllib.parse.urlencode({"v": PROTOCOL, "host": lan_address(), "port": port, "fp": fp, "token": token, "name": socket.gethostname()})
+    from settings import Settings
+
+    route = getattr(Settings(), "phone_route", "lan")
+    # With Tailscale the phone reaches the computer at its tailnet address, at home and away.
+    host = (tailscale_address() if route == "tailscale" else "") or lan_address()
+    fields = {"v": PROTOCOL, "host": host, "port": port, "fp": fp, "token": token, "name": socket.gethostname()}
+    if route == "cloudflare":
+        import relay_link
+
+        relay = relay_link.secrets_for_link(_load_store())
+        if relay:
+            fields.update({"relay": relay["url"], "room": relay["room"], "key": relay_link.b64u(relay["k"]), "access": relay["access"]})
+    query = urllib.parse.urlencode(fields)
     link = f"kai://pair?{query}"
     return {"link": link, "qr": _qr(link)}
 
@@ -279,6 +312,8 @@ class _Conn:
         self.address = address
         self.caps: set[str] = set()
         self.ready = False
+        # The screen or the camera this phone is looking at (phone_view.Viewer), if any.
+        self.viewer = None
         self._send_lock = threading.Lock()
 
     def send(self, line: str) -> bool:
@@ -294,6 +329,51 @@ class _Conn:
             self.sock.close()
         except OSError:
             pass
+
+
+class _RelayConn(_Conn):
+    """The relay's phone: lines in through feed(), out through the encrypted channel."""
+
+    def __init__(self, server: "_Server", send) -> None:
+        self.server = server
+        self._out = send
+        self.address = "relay"
+        self.caps = set()
+        self.ready = False
+        self.viewer = None
+        self.closed = False
+
+    def send(self, line: str) -> bool:
+        return not self.closed and self._out(line)
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        if self.viewer:
+            self.viewer.stop()
+        with _lock:
+            if self in self.server.conns:
+                self.server.conns.remove(self)
+        _write_status()
+
+    def feed(self, raw: bytes) -> bool:
+        """One decrypted line. False once the conversation is over."""
+        try:
+            message = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            return True
+        if not isinstance(message, dict):
+            return True
+        if not self.ready:
+            if not self.server._welcome(self, message):
+                self.close()
+                return False
+            with _lock:
+                self.server.conns.append(self)
+            return True
+        self.server._handle(self, message)
+        return True
 
 
 class _Server:
@@ -343,15 +423,30 @@ class _Server:
         threading.Thread(target=self._accept, name="kai-phone", daemon=True).start()
         threading.Thread(target=self._tick, name="kai-phone-tick", daemon=True).start()
         _log(f"dinliyor, port {self.port}")
+        self.relay = None
+        from settings import Settings
+
+        if getattr(Settings(), "phone_route", "lan") == "cloudflare":
+            import relay_link
+
+            self.relay = relay_link.RelayClient(self, _load_store())
+            self.relay.start()
+            _log("aracı sunucuya bağlanıyor" if self.relay.secrets else "aracı sunucu kurulu değil")
 
     def stop(self) -> None:
         self._stop = True
+        if getattr(self, "relay", None):
+            self.relay.stop()
         self.drop_all()
         if self._listener:
             try:
                 self._listener.close()
             except OSError:
                 pass
+
+    def relay_conn(self, send) -> "_RelayConn":
+        """A phone that came in through the relay: the same v1 conversation, its lines carried by relay_link."""
+        return _RelayConn(self, send)
 
     def drop_all(self) -> None:
         with _lock:
@@ -371,7 +466,7 @@ class _Server:
             # Only the local network: nobody from outside is even read from.
             try:
                 ip = ipaddress.ip_address(address)
-                local = ip.is_private or ip.is_loopback or ip.is_link_local
+                local = ip.is_private or ip.is_loopback or ip.is_link_local or ip in TAILSCALE
             except ValueError:
                 local = False
             with _lock:
@@ -408,6 +503,8 @@ class _Server:
         except (OSError, ssl.SSLError, ValueError):
             pass
         finally:
+            if conn.viewer:
+                conn.viewer.stop()
             with _lock:
                 if conn in self.conns:
                     self.conns.remove(conn)
@@ -469,6 +566,24 @@ class _Server:
             if word == "allow" and item["truncated"]:
                 return  # only the computer can allow a command the phone did not see whole
             self._apply(item, word)
+        elif kind == "viewStart" and "view" in conn.caps:
+            source = message.get("source")
+            if source not in ("screen", "camera"):
+                return
+            if conn.viewer:
+                conn.viewer.stop()
+            import phone_view
+
+            _log(f"telefon {'kameraya' if source == 'camera' else 'ekrana'} bakıyor")
+            conn.viewer = phone_view.Viewer(conn.send, source, _viewing, relayed=conn.address == "relay")
+            conn.viewer.start()
+        elif kind == "viewStop":
+            if conn.viewer:
+                conn.viewer.stop()
+                conn.viewer = None
+        elif kind == "frameAck":
+            if conn.viewer:
+                conn.viewer.ack(message.get("id"))
         elif kind == "answer" and "answers" in conn.caps:
             item = self.hub.pending.get(str(message.get("fingerprint") or ""))
             if not item or item["questions"] is None:
@@ -557,7 +672,24 @@ def _offered(settings) -> list[str]:
     caps = ["usage", "details"]
     if getattr(settings, "phone_answers", True):
         caps.append("answers")
+    # Looking at the screen and the camera: only when turned on in the Kai window.
+    if getattr(settings, "phone_view", False):
+        caps.append("view")
     return caps
+
+
+def _viewing(source: str) -> None:
+    """A phone started or stopped looking: the island's Kai shows it (a camera, a magnifying glass)."""
+    server = _server
+    with _lock:
+        looking = [c.viewer.source for c in (server.conns if server else []) if c.viewer and not c.viewer._stop.is_set()]
+    shown = source or (looking[0] if looking else "")
+    try:
+        import agents
+
+        agents._forward({"hook_event_name": "KaiPhoneView", "source": shown})
+    except Exception:
+        pass
 
 
 # ── What Kai tells the link (agents.py) ─────────────────────────────────────
@@ -647,10 +779,17 @@ def apply(settings) -> None:
     """Started or stopped with the setting (Kai window › Phone); off by default."""
     global _server
     want = bool(getattr(settings, "phone_link", False))
+    route = getattr(settings, "phone_route", "lan")
     with _lock:
         running = _server
+    # Another way to the phone (Tailscale, the relay): the link starts again with it.
+    if want and running and getattr(running, "route", route) != route:
+        _server = None
+        running.stop()
+        running = None
     if want and not running:
         server = _Server()
+        server.route = route
         try:
             server.start()
         except Exception as exc:
@@ -662,6 +801,17 @@ def apply(settings) -> None:
         running.stop()
         _log("kapandı")
     _write_status()
+
+
+def restart(settings) -> None:
+    """Paired again, or the relay was set up: everything starts again with the new secrets."""
+    global _server
+    with _lock:
+        running = _server
+        _server = None
+    if running:
+        running.stop()
+    apply(settings)
 
 
 def _status_path() -> str:
@@ -677,7 +827,8 @@ def _write_status() -> None:
         phones = sum(1 for c in server.conns if c.ready) if server else 0
     try:
         with open(_status_path() + ".tmp", "w", encoding="utf-8") as handle:
-            json.dump({"on": server is not None, "port": server.port if server else PORT, "phones": phones}, handle)
+            relay = getattr(server, "relay", None) if server else None
+            json.dump({"on": server is not None, "port": server.port if server else PORT, "phones": phones, "relay": relay.state if relay else "off"}, handle)
         os.replace(_status_path() + ".tmp", _status_path())
     except OSError:
         pass
@@ -695,4 +846,11 @@ def _read_status() -> dict:
 def status() -> dict:
     """What the Kai window shows: from the main process's status file."""
     shown = _read_status()
-    return {"on": bool(shown.get("on")), "paired": bool(_load_store().get("token")), "phones": int(shown.get("phones") or 0), "port": int(shown.get("port") or PORT)}
+    import relay_link
+
+    store = _load_store()
+    return {
+        "on": bool(shown.get("on")), "paired": bool(store.get("token")), "phones": int(shown.get("phones") or 0),
+        "port": int(shown.get("port") or PORT), "tailscale": tailscale_address(),
+        "relaySet": relay_link.secrets_for_link(store) is not None, "relay": str(shown.get("relay") or "off"),
+    }

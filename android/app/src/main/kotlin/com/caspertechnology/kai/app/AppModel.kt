@@ -1,5 +1,6 @@
 package com.caspertechnology.kai.app
 
+import androidx.compose.ui.graphics.asImageBitmap
 import android.content.Context
 import android.os.Build
 import android.os.Handler
@@ -241,6 +242,64 @@ class AppModel(private val context: Context) : LinkListener {
     /** The read-only service cards the user allowed on the computer; empty: none. */
     var services by mutableStateOf<List<com.caspertechnology.kai.link.ServiceCard>>(emptyList()); private set
 
+    // Kai: the computer's screen or camera, live (capability `view`).
+    /** The computer lets this phone look (turned on in the Kai window › Phone). */
+    var viewOffered by mutableStateOf(false); private set
+    /** What is being looked at: "screen", "camera", or null. */
+    var viewSource by mutableStateOf<String?>(null); private set
+    /** The computer said why it stopped or could not start ("no_camera"…), shown under the picture. */
+    var viewReason by mutableStateOf(""); private set
+    var viewFrame by mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null); private set
+    /** Frames shown in the last second, for the little counter. */
+    var viewFps by mutableStateOf(0); private set
+    private val viewFeed = ViewFeed()
+    private val viewWorker = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private var viewFrames = ArrayDeque<Long>()
+
+    /** Starts looking (after the screen lock was checked by the caller). False if the computer does not offer it. */
+    fun startView(source: String): Boolean {
+        if (source != "screen" && source != "camera") return false
+        viewWorker.execute { viewFeed.reset() }
+        viewFrame = null
+        viewReason = ""
+        val ok = link?.viewStart(source) == true
+        viewSource = if (ok) source else null
+        return ok
+    }
+
+    fun stopView() {
+        if (viewSource == null) return
+        viewSource = null
+        viewFrame = null
+        link?.viewStop()
+    }
+
+    override fun onViewState(source: String, active: Boolean, reason: String) {
+        main.post {
+            if (!active && viewSource == source) {
+                viewSource = null
+                if (reason != "stopped") viewReason = reason
+            }
+        }
+    }
+
+    override fun onFrame(part: com.caspertechnology.kai.link.ServerMsg.Frame) {
+        viewWorker.execute {
+            val (id, bitmap) = viewFeed.accept(part) ?: return@execute
+            val image = bitmap.asImageBitmap()
+            main.post {
+                if (viewSource == null) return@post
+                viewFrame = image
+                val now = android.os.SystemClock.elapsedRealtime()
+                viewFrames.addLast(now)
+                while (viewFrames.isNotEmpty() && now - viewFrames.first() > 1000) viewFrames.removeFirst()
+                viewFps = viewFrames.size
+            }
+            // Only now the computer makes the next one: nothing piles up on a slow link.
+            link?.frameAck(id)
+        }
+    }
+
     /** What the Chat tab shows: not paired, not reachable, chat off on the computer, no model allowed, or ready. */
     val chatTabState: ChatTabState get() = ChatTab.state(
         paired = mode == Mode.PAIRED, connected = linkState == LinkState.CONNECTED, offered = chatOffered, modelCount = chatModels.size,
@@ -405,6 +464,17 @@ class AppModel(private val context: Context) : LinkListener {
         sessions.firstOrNull { it.pillId == pillId }?.agent?.takeIf { it.isNotBlank() } ?: Pills.byId(pillId)?.name ?: com.caspertechnology.kai.core.Texts.t("agent_an_title", "An agent")
 
     val isPaired get() = store.loadPairing() != null
+
+    /** Kai: a newer APK on GitHub, shown on Home. */
+    var update by mutableStateOf<UpdateCheck.Update?>(null); private set
+
+    /** Looks for a newer Kai on GitHub (at most every six hours), off the main thread. */
+    fun checkUpdate(force: Boolean = false) {
+        Thread {
+            val found = UpdateCheck.check(context, force)
+            main.post { update = found }
+        }.apply { isDaemon = true }.start()
+    }
 
     /** Called at launch and by the service: reconnects to the stored desktop, if any. */
     fun resume() {
@@ -695,6 +765,8 @@ class AppModel(private val context: Context) : LinkListener {
             if (state == LinkState.CONNECTED) finder.connected() // found it (or never lost it): stop looking
             // A card for a request we can no longer answer would only produce "no longer pending".
             if (state != LinkState.CONNECTED && mode == Mode.PAIRED) dropApprovals()
+            // The picture stops with the link; the viewer says so instead of freezing on the last frame.
+            if (state != LinkState.CONNECTED && viewSource != null) { viewSource = null; viewFrame = null; viewReason = "link" }
             if (state != LinkState.CONNECTED) chatLinkLost()
             refreshIsland()
         }
@@ -709,6 +781,8 @@ class AppModel(private val context: Context) : LinkListener {
             chatOffered = Protocol.CAP_CHAT in caps
             detailsOffered = Protocol.CAP_DETAILS in caps
             diffsOffered = Protocol.CAP_DIFFS in caps
+            viewOffered = Protocol.CAP_VIEW in caps
+            if (!viewOffered) viewSource = null
             if (Protocol.CAP_USAGE !in caps) usage = null
             if (Protocol.CAP_RECAP !in caps) recap = null
             pushGlance() // the Usage Ring says to turn it on

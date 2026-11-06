@@ -28,10 +28,11 @@ _state: dict = {}
 SECRETS = ("api_key", "groq_key", "elevenlabs_key", "github_token", "vercel_token", "stripe_key", "mail_password", "calendar_ics")
 TEXTS = ("mail_address", "mail_server")
 CHOICES = {
+    "phone_route": ("lan", "tailscale", "cloudflare"),
     "stt_engine": ("online", "whisper", "parakeet"),
     "ok_kai_sense": ("low", "mid", "high"),
 }
-FLAGS = ("dictation", "ok_kai", "app_on_launch", "show_clock", "alerts_all_pills", "feels_pc", "claude_desktop_chat", "update_checks", "summary_enabled", "mute_others", "plan_in_compact", "phone_link", "phone_answers")
+FLAGS = ("dictation", "ok_kai", "app_on_launch", "show_clock", "alerts_all_pills", "feels_pc", "claude_desktop_chat", "update_checks", "summary_enabled", "mute_others", "plan_in_compact", "phone_link", "phone_answers", "phone_view")
 
 
 def _settings():
@@ -72,6 +73,8 @@ def _all() -> dict:
             "plan_in_compact": s.plan_in_compact,
             "phone_link": s.phone_link,
             "phone_answers": s.phone_answers,
+            "phone_view": s.phone_view,
+            "phone_route": s.phone_route,
             "mail_address": s.mail_address,
             "mail_server": s.mail_server,
         },
@@ -164,7 +167,7 @@ class AppApi:
         except Exception:
             return json.dumps("unknown", ensure_ascii=True)
 
-    def phone(self, action="status") -> str:
+    def phone(self, action="status", url="", access="") -> str:
         """Kai window › Phone: the link's state, a new pairing code, or unpairing."""
         import phone_link
 
@@ -178,6 +181,15 @@ class AppApi:
             self.log("telefon: eşleşme kaldırıldı")
         elif action == "code":
             out = phone_link.pairing()
+        elif action == "relay":
+            # The relay's address and access key, pasted in the Kai window (or set by server/relay/deploy.ps1).
+            import relay_link
+
+            try:
+                relay_link.save_relay(str(url).strip(), str(access).strip())
+                self.log("telefon: aracı sunucu kaydedildi")
+            except ValueError:
+                out = {"error": "relay"}
         out.update(phone_link.status())
         return json.dumps(out, ensure_ascii=True)
 

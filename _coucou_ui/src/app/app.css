@@ -761,3 +761,5 @@ html, body {
 .a-phone-qr { width: 180px; height: 180px; border-radius: 12px; background: #fff; padding: 6px; image-rendering: pixelated; }
 .a-phone-steps { display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
 .a-phone-steps p { margin: 0; font-size: 13px; }
+
+.a-phone-relay { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }

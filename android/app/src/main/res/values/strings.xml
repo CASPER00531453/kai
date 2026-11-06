@@ -479,4 +479,29 @@
         <item quantity="one">%1$d waiting for you</item>
         <item quantity="other">%1$d waiting for you</item>
     </plurals>
+    <string name="view_screen_title">Computer\'s screen</string>
+    <string name="view_camera_title">Computer\'s camera</string>
+    <string name="view_screen_button">See the screen</string>
+    <string name="view_camera_button">See the camera</string>
+    <string name="view_stop">Stop</string>
+    <string name="view_back">Home</string>
+    <string name="view_connecting">Starting…</string>
+    <string name="view_live">Live · %1$d fps</string>
+    <string name="view_stopped">Stopped.</string>
+    <string name="view_no_camera">No camera found on the computer.</string>
+    <string name="view_link_lost">The link to the computer was lost.</string>
+    <string name="view_waiting">Waiting for the first picture…</string>
+    <string name="view_privacy">While you look, Kai on the computer holds a camera or a magnifying glass to its eye, so whoever is there sees it.</string>
+    <string name="remote_title">Remote</string>
+    <string name="remote_body">Look at the computer\'s screen or camera, live.</string>
+    <string name="remote_offline">The computer is not connected right now.</string>
+    <string name="remote_turn_on">On the computer, turn on \"See the screen and the camera from the phone\" in the Kai window › Phone.</string>
+    <string name="update_title">Kai %1$s is out</string>
+    <string name="update_body">A newer Kai for Android is on GitHub. Download it and open the file to update.</string>
+    <string name="update_button">Download the update</string>
+    <string name="idle_title">Kai is ready</string>
+    <string name="idle_line_approvals">When Claude Code asks for a permission, you allow or deny it here.</string>
+    <string name="idle_line_questions">Claude\'s questions come here too.</string>
+    <string name="idle_line_view">Look at the computer\'s screen or camera from anywhere.</string>
+    <string name="idle_line_widgets">Hold your home screen and add a Kai widget.</string>
 </resources>

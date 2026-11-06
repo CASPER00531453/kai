@@ -90,6 +90,10 @@ import com.caspertechnology.kai.mochi.BotState
 import com.caspertechnology.kai.mochi.MochiEngine
 import com.caspertechnology.kai.mochi.MochiView
 import com.caspertechnology.kai.ui.Panel
+import com.caspertechnology.kai.ui.IdlePanel
+import com.caspertechnology.kai.ui.RemotePanel
+import com.caspertechnology.kai.ui.UpdatePanel
+import com.caspertechnology.kai.ui.ViewerScreen
 import com.caspertechnology.kai.ui.c
 import com.caspertechnology.kai.ui.style
 import com.caspertechnology.kai.ui.tokens
@@ -156,6 +160,7 @@ class MainActivity : ComponentActivity() {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
         model.resume()
+        model.checkUpdate()
         setContent {
             CoucouTheme(model.settings.theme, model.settings.dynamicColour) {
                 // Dark icons on a light page; the camera screen is black in both themes, so its icons are light.
@@ -191,11 +196,13 @@ class MainActivity : ComponentActivity() {
                             Screen.WARDROBE -> WardrobeScreen(model, onBack = { screen = Screen.SETTINGS })
                             Screen.DIAGNOSTICS -> DiagnosticsScreen(model, onBack = { screen = Screen.SETTINGS })
                             Screen.HISTORY -> HistoryScreen(model, onBack = { screen = Screen.SETTINGS })
+                            Screen.VIEWER -> ViewerScreen(model, onBack = { screen = Screen.HOME })
                             Screen.HOME -> if (model.mode == Mode.NONE) PairingScreen(model, onScan = { screen = Screen.SCAN }, onAbout = { screen = Screen.SETTINGS }) else Home(
                                 model, onApprove = ::approve, onOverlay = ::setOverlay,
                                 onSession = { detailPill = it; screen = Screen.SESSION },
                                 onScan = { screen = Screen.SCAN }, onReview = { closedApproval = null }, onQuestion = { questionPill = it },
                                 onHistory = { screen = Screen.HISTORY }, onDiagnostics = { screen = Screen.DIAGNOSTICS },
+                                onView = ::view,
                             )
                         }
                         }
@@ -311,6 +318,21 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Allow: only after the biometric / screen-lock check. */
+    /** Kai: looking at the computer's screen or camera needs the screen lock first, like Allow. */
+    private fun view(source: String) {
+        if (confirming) return
+        confirming = true
+        BiometricGate.confirm(
+            this, getString(if (source == "camera") R.string.view_camera_title else R.string.view_screen_title),
+            model.desktopName.orEmpty(), getString(R.string.msg_need_lock),
+            onSuccess = {
+                confirming = false
+                if (model.startView(source)) screen = Screen.VIEWER else model.message = getString(R.string.remote_turn_on)
+            },
+            onFail = { confirming = false; if (it.isNotBlank()) model.message = it },
+        )
+    }
+
     private fun approve(r: ApprovalRequest) {
         if (confirming) return // a second tap must not open a second prompt
         if (!ApprovalSheetPlan.canAllowHere(r)) { model.message = getString(R.string.approval_on_computer); return }
@@ -327,6 +349,7 @@ class MainActivity : ComponentActivity() {
 private fun Home(
     model: AppModel, onApprove: (ApprovalRequest) -> Unit, onOverlay: (Boolean) -> Unit, onSession: (String) -> Unit,
     onScan: () -> Unit, onHistory: () -> Unit, onReview: () -> Unit, onQuestion: (String) -> Unit, onDiagnostics: () -> Unit,
+    onView: (String) -> Unit,
 ) {
     val engines = remember { HashMap<String, MochiEngine>() }
     val miniEngines = remember { HashMap<String, MochiEngine>() }
@@ -397,6 +420,10 @@ private fun Home(
         model.message?.let { msg ->
             item { Box(Modifier.padding(horizontal = Gutter)) { MessagePanel(msg) { model.message = null } } }
         }
+        // Kai: a newer version, the screen and the camera, and what Kai does while nothing runs.
+        if (model.update != null) item { Box(Modifier.padding(horizontal = Gutter)) { UpdatePanel(model) } }
+        if (model.mode == Mode.PAIRED) item { Box(Modifier.padding(horizontal = Gutter)) { RemotePanel(model, onView) } }
+        if (model.sessions.none { it.state != BotState.IDLE }) item { Box(Modifier.padding(horizontal = Gutter)) { IdlePanel() } }
 
 
         if (others.isNotEmpty()) {

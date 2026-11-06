@@ -12,6 +12,7 @@ import {
 import { Sound } from "../core/sound";
 import { prefs, setPref, turkish } from "../core/prefs";
 import { usageColor, usagePct } from "../core/usage";
+import { drawViewProp } from "../mochi/props";
 import { nextApproval, restoreAlertFocus } from "./hooks";
 import { Focus } from "./focus";
 import { State } from "../core/state";
@@ -56,6 +57,9 @@ export class Island {
   private clockEl!: HTMLElement;
   /** The Claude plan's percentage in the compact island (Coucou #979). */
   private compactPlan!: HTMLElement;
+  /** What Kai holds while the phone looks (props.ts), and how far it is in. */
+  private viewShown: "camera" | "screen" | null = null;
+  private viewPresence = 0;
   private clockTimer: number | null = null;
   private countdown!: HTMLElement;
   private wakeStrip!: HTMLElement;
@@ -944,7 +948,7 @@ export class Island {
       State.tasks.some((task) => !task.isIntegration && task.state !== "idle" && task.state !== "finished" && task.state !== "sleeping");
     const busy = State.mode === "hidden"
       ? settling
-      : moving || this.engine.looping || working || State.mode === "expanded";
+      : moving || this.engine.looping || working || State.mode === "expanded" || State.phoneView != null || this.viewPresence > 0.01;
 
     if (!busy) {
       this.running = false;
@@ -1030,6 +1034,16 @@ export class Island {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, hCss);
     this.engine.draw(ctx, w, hCss);
+    // The phone looks at this computer: a camera to the eye, or a magnifying glass.
+    const view = State.phoneView;
+    if (view) this.viewShown = view;
+    this.viewPresence += ((view ? 1 : 0) - this.viewPresence) * Math.min(1, dt * 8);
+    if (this.viewShown && this.viewPresence > 0.01) {
+      const R = w * 0.3;
+      const cx = w / 2 + this.engine.ox * R;
+      const cy = hCss / 2 + BOT_OVERHANG / 2 + this.engine.oy * R + R * 0.06;
+      drawViewProp(ctx, this.viewShown, cx, cy, R, performance.now() / 1000, this.viewPresence);
+    }
   }
 
   /** BotCanvasView.lookX / lookY — tanh of the distance to the bot. */

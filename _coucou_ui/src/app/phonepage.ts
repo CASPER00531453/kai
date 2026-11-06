@@ -4,7 +4,7 @@
 import { h } from "../views/dom";
 import { Api, type PhoneState } from "./api";
 import type { Ctx } from "./flowpages";
-import { button, card, L, row, toast, toggle } from "./ui";
+import { button, card, input, L, row, segmented, toast, toggle } from "./ui";
 
 export function phonePage(ctx: Ctx): HTMLElement {
   const f = ctx.state.flow;
@@ -12,6 +12,38 @@ export function phonePage(ctx: Ctx): HTMLElement {
   const state = h("div", { class: "a-phone-state" });
   const code = h("div", { class: "a-phone-code" });
   const actions = h("div", { class: "a-inline" });
+  const routeNote = h("p", { class: "a-muted small" });
+  const relayUrl = input("", "wss://kai-link.….workers.dev", () => {}, { wide: true });
+  const relayKey = input("", L("erişim anahtarı (43 karakter)", "access key (43 characters)"), () => {}, { wide: true, type: "password" });
+  const relayBox = h("div", { class: "a-phone-relay" },
+    relayUrl, relayKey,
+    h("div", { class: "a-inline" }, button(L("Kaydet", "Save"), () => void saveRelay(), "primary")),
+    h("p", { class: "a-muted small", text: L(
+      "Aracıyı kendi Cloudflare hesabına kurmak için Kai klasöründe server\\relay\\deploy.ps1'i çalıştır; adresi ve anahtarı Kai'ye kendisi yazar. Bağlantı uçtan uca şifreli: Cloudflare içeriği göremez.",
+      "To put the relay on your own Cloudflare account, run server\\relay\\deploy.ps1 in Kai's folder; it gives Kai the address and the key itself. The link is end-to-end encrypted: Cloudflare cannot see the content.") }),
+  );
+
+  async function saveRelay() {
+    const s = await Api.phone("relay", relayUrl.value, relayKey.value);
+    if (s.error) return toast(L("Adres wss:// ile başlamalı, anahtar 43 karakter olmalı", "The address must start with wss:// and the key must be 43 characters"));
+    relayKey.value = "";
+    toast(L("Aracı kaydedildi; telefonu yeniden eşleştir", "Relay saved; pair the phone again"));
+    paint(s);
+  }
+
+  function paintRoute(s: PhoneState) {
+    const route = f.phone_route || "lan";
+    relayBox.style.display = route === "cloudflare" ? "" : "none";
+    routeNote.textContent = route === "tailscale"
+      ? (s.tailscale
+        ? L(`Tailscale açık: bu bilgisayar ${s.tailscale}. Telefona da Tailscale'i kur ve aynı hesapla gir; evde de dışarıda da doğrudan bağlanır, en hızlısı budur.`, `Tailscale is on: this computer is ${s.tailscale}. Install Tailscale on the phone with the same account; it connects directly at home and away, the fastest way.`)
+        : L("Bu bilgisayarda Tailscale bulunamadı. tailscale.com'dan bilgisayara ve telefona kur, ikisinde de aynı hesapla gir, sonra telefonu yeniden eşleştir.", "Tailscale was not found on this computer. Install it from tailscale.com on the computer and the phone, sign in with the same account on both, then pair the phone again."))
+      : route === "cloudflare"
+        ? (s.relaySet
+          ? L(`Aracı kurulu (${s.relay === "online" ? "bağlı" : s.relay ?? "kapalı"}). Evdeyken yerel ağdan, dışarıdayken aracıdan bağlanır.`, `The relay is set up (${s.relay ?? "off"}). At home the phone uses the local network, away the relay.`)
+          : L("Aracı henüz kurulu değil: aşağıya adresini ve anahtarını gir.", "The relay is not set up yet: enter its address and key below."))
+        : L("Sadece aynı Wi-Fi'deyken bağlanır. Evin dışından kontrol için Tailscale ya da Cloudflare'i seç.", "Connects only on the same Wi-Fi. For control from outside home, pick Tailscale or Cloudflare.");
+  }
 
   function paint(s: PhoneState) {
     const on = f.phone_link;
@@ -30,6 +62,7 @@ export function phonePage(ctx: Ctx): HTMLElement {
       s.paired ? button(L("Eşleşmeyi kaldır", "Unpair"), () => void unpair(), "danger") : "",
     );
     actions.style.display = on ? "" : "none";
+    paintRoute(s);
   }
 
   async function pair() {
@@ -71,8 +104,16 @@ export function phonePage(ctx: Ctx): HTMLElement {
       code,
     ),
     card(
+      L("Evin dışından", "From outside home"),
+      row(L("Bağlantı yolu", "How the phone gets here"), L("Seçimi değiştirince telefonu yeniden eşleştir.", "Pair the phone again after changing it."),
+        segmented([[L("Yerel ağ", "Local network"), "lan"], ["Tailscale", "tailscale"], ["Cloudflare", "cloudflare"]], f.phone_route || "lan", (v) => void set("phone_route", v))),
+      routeNote,
+      relayBox,
+    ),
+    card(
       L("Neler gider", "What is shared"),
       row(L("Claude'un sorularını telefondan cevapla", "Answer Claude's questions on the phone"), L("Kapalıyken sorular sadece adada çıkar.", "Off: questions show on the island only."), toggle(f.phone_answers, (on) => void set("phone_answers", on))),
+      row(L("Telefondan ekranı ve kamerayı gör", "See the screen and the camera from the phone"), L("Eşleşen telefon bu bilgisayarın ekranına ya da kamerasına canlı bakabilir. Bakılırken Kai adada gözüne kamera ya da mercek tutar, yani bilgisayarın başındaki her zaman görür. Telefon başlatmadan önce parmak izini sorar.", "The paired phone can look at this computer's screen or camera, live. While it looks, Kai on the island holds a camera or a magnifying glass to its eye, so whoever is at the computer always sees it. The phone asks for the fingerprint before it starts."), toggle(f.phone_view, (on) => void set("phone_view", on))),
       h("p", { class: "a-muted small", text: L(
         "Telefona sadece ajanların durumu, izin istenen komut, Claude'un soruları ve plan yüzdesi gider. Dosyaların, sohbetlerin ve anahtarların bilgisayardan çıkmaz. İzin vermek için telefon parmak izini ya da ekran kilidini sorar.",
         "The phone only gets the agents' state, the command asking for permission, Claude's questions and the plan percentage. Your files, chats and keys never leave the computer. Allowing needs the phone's fingerprint or screen lock.") }),

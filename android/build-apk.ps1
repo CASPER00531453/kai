@@ -27,8 +27,11 @@ if ($Task -like "*Release*") {
 }
 
 Push-Location $work
-& .\gradlew.bat $Task --no-daemon -q
+# Gradle and Kotlin write notices to stderr; in Windows PowerShell that is not a failure, the exit code is.
+$ErrorActionPreference = "Continue"
+& .\gradlew.bat $Task --no-daemon -q 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -match "^e: |error:|FAILED|What went wrong" }
 $code = $LASTEXITCODE
+$ErrorActionPreference = "Stop"
 Pop-Location
 if ($code -ne 0) { throw "Gradle failed ($code)" }
 

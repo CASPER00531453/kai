@@ -173,6 +173,8 @@ class AppState {
   pendingApproval: ApprovalInfo | null = null;
   /** Requests waiting in line while another card is up, oldest first (Coucou #984). */
   approvalQueue: ApprovalInfo[] = [];
+  /** The paired phone looks at the screen or the camera (phone_view.py): Kai shows it. */
+  phoneView: "camera" | "screen" | null = null;
 
   integrations: Record<string, IntegrationInfo> = {};
 

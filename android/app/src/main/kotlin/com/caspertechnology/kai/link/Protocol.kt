@@ -18,7 +18,9 @@ object Protocol {
     /** One message never exceeds this; a longer line is a protocol error. */
     const val MAX_LINE_BYTES = 64 * 1024
     /** Optional features this app understands; the desktop offers back the ones it has switched on. */
-    val CAPABILITIES = listOf("chat", "details", "answers", "prefs", "diffs", "usage", "recap", "services", "relay")
+    val CAPABILITIES = listOf("chat", "details", "answers", "prefs", "diffs", "usage", "recap", "services", "relay", "view")
+    /** Kai: the computer's screen or camera, live (phone_view.py on the computer). */
+    const val CAP_VIEW = "view"
     const val CAP_CHAT = "chat"
     /** Steps, last line, project folder name and colour of each session. */
     const val CAP_DETAILS = "details"
@@ -164,6 +166,10 @@ sealed interface ServerMsg {
     /** [reason] is a fixed code (off, busy, rate, auth...); [message] a fixed sentence written by the computer. */
     data class ChatError(val id: String, val reason: String, val message: String) : ServerMsg
     data class Error(val code: String, val message: String) : ServerMsg
+    /** Kai: looking at the screen or the camera started (`active`) or ended, and why. */
+    data class ViewState(val source: String, val active: Boolean, val reason: String) : ServerMsg
+    /** Kai: one part of a JPEG frame, base64; the parts of one `id` make the picture. */
+    data class Frame(val id: Long, val part: Int, val parts: Int, val data: String) : ServerMsg
 }
 
 sealed interface ClientMsg {
@@ -179,6 +185,9 @@ sealed interface ClientMsg {
     data object ChatModels : ClientMsg
     data class ChatSend(val id: String, val model: String, val text: String) : ClientMsg
     data class ChatCancel(val id: String) : ClientMsg
+    data class ViewStart(val source: String) : ClientMsg
+    data object ViewStop : ClientMsg
+    data class FrameAck(val id: Long) : ClientMsg
     /** New chat: the computer forgets its side of the conversation and stops a running answer. */
     data object ChatReset : ClientMsg
 }
@@ -203,6 +212,9 @@ object Wire {
             is ClientMsg.ChatSend -> o.put("type", "chatSend").put("id", m.id).put("model", m.model).put("text", m.text)
             is ClientMsg.ChatCancel -> o.put("type", "chatCancel").put("id", m.id)
             ClientMsg.ChatReset -> o.put("type", "chatReset")
+            is ClientMsg.ViewStart -> o.put("type", "viewStart").put("source", m.source)
+            ClientMsg.ViewStop -> o.put("type", "viewStop")
+            is ClientMsg.FrameAck -> o.put("type", "frameAck").put("id", m.id)
         }
         return o.toString()
     }
@@ -235,6 +247,8 @@ object Wire {
                 "prefs" -> o.optString("outfit", "").takeIf { it in Wardrobe.SELECTIONS }?.let { ServerMsg.Prefs(it) }
                 "relayAccess" -> o.optString("access", "").takeIf(RelayPairing::isSecret)?.let { ServerMsg.RelayAccess(it) }
                 "pong" -> ServerMsg.Pong
+                "viewState" -> ServerMsg.ViewState(o.getString("source"), o.optBoolean("active", false), o.optString("reason", ""))
+                "frame" -> ServerMsg.Frame(o.getLong("id"), o.getInt("part"), o.getInt("parts").also { require(it in 1..64) }, o.getString("data"))
                 "chatModels" -> ServerMsg.ChatModels(o.getJSONArray("models").objects().mapNotNull(::chatModel))
                 "chatDelta" -> ServerMsg.ChatDelta(chatId(o), o.getString("text"))
                 "chatDone" -> ServerMsg.ChatDone(chatId(o), if (o.has("text")) o.getString("text") else null)

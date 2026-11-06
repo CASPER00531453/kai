@@ -151,6 +151,8 @@ class Settings:
         self.plan_in_compact = True
         self.phone_link = False
         self.phone_answers = True
+        self.phone_view = False
+        self.phone_route = "lan"
         self.feedback_key = ""
         self.admin = False
         self.load()
@@ -247,6 +249,11 @@ class Settings:
         # The Android app as a remote control (phone_link.py): off until turned on.
         self.phone_link = bool(data.get("phone_link", False))
         self.phone_answers = bool(data.get("phone_answers", True))
+        # The phone may look at the screen and the camera (phone_view.py): off until turned on.
+        self.phone_view = bool(data.get("phone_view", False))
+        # How the phone reaches this computer: the local network, Tailscale or the Cloudflare relay.
+        route = str(data.get("phone_route") or "lan")
+        self.phone_route = route if route in ("lan", "tailscale", "cloudflare") else "lan"
         _apply_hush(self)
         # Only the developer's Kai has one: it collects the ratings people send.
         self.feedback_key = _unseal(str(data.get("feedback_key") or ""))
@@ -314,6 +321,8 @@ class Settings:
             "plan_in_compact": bool(self.plan_in_compact),
             "phone_link": bool(self.phone_link),
             "phone_answers": bool(self.phone_answers),
+            "phone_view": bool(self.phone_view),
+            "phone_route": self.phone_route,
             "feedback_key": _seal(self.feedback_key.strip()),
             "admin": _seal("owner") if self.admin else "",
         }

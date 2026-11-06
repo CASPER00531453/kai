@@ -1271,8 +1271,8 @@ class KaiApp:
             # Paired again or unpaired in the Kai window: the phone with the old token goes.
             import phone_link
 
-            if phone_link._server:
-                phone_link._server.drop_all()
+            self.settings.load()
+            phone_link.restart(self.settings)
 
     def _write_status(self) -> None:
         now = time.monotonic()

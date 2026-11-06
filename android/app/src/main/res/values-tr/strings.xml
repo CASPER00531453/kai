@@ -479,4 +479,29 @@
         <item quantity="one">%1$d öğe seni bekliyor</item>
         <item quantity="other">%1$d öğe seni bekliyor</item>
     </plurals>
+    <string name="view_screen_title">Bilgisayarın ekranı</string>
+    <string name="view_camera_title">Bilgisayarın kamerası</string>
+    <string name="view_screen_button">Ekranı gör</string>
+    <string name="view_camera_button">Kamerayı gör</string>
+    <string name="view_stop">Durdur</string>
+    <string name="view_back">Ana sayfa</string>
+    <string name="view_connecting">Başlıyor…</string>
+    <string name="view_live">Canlı · %1$d kare/sn</string>
+    <string name="view_stopped">Durdu.</string>
+    <string name="view_no_camera">Bilgisayarda kamera bulunamadı.</string>
+    <string name="view_link_lost">Bilgisayarla bağlantı koptu.</string>
+    <string name="view_waiting">İlk görüntü bekleniyor…</string>
+    <string name="view_privacy">Sen bakarken bilgisayardaki Kai gözüne kamera ya da mercek tutar; başındaki kişi bunu görür.</string>
+    <string name="remote_title">Uzaktan</string>
+    <string name="remote_body">Bilgisayarın ekranına ya da kamerasına canlı bak.</string>
+    <string name="remote_offline">Bilgisayar şu an bağlı değil.</string>
+    <string name="remote_turn_on">Bilgisayarda Kai penceresi › Telefon bölümünde \"Telefondan ekranı ve kamerayı gör\"ü aç.</string>
+    <string name="update_title">Kai %1$s çıktı</string>
+    <string name="update_body">Android için Kai\'nin yeni sürümü GitHub\'da. İndir ve dosyayı açıp güncelle.</string>
+    <string name="update_button">Güncellemeyi indir</string>
+    <string name="idle_title">Kai hazır</string>
+    <string name="idle_line_approvals">Claude Code izin isteyince buradan izin ver ya da reddet.</string>
+    <string name="idle_line_questions">Claude\'un soruları da buraya gelir.</string>
+    <string name="idle_line_view">Bilgisayarın ekranına ya da kamerasına her yerden bak.</string>
+    <string name="idle_line_widgets">Ana ekrana basılı tut ve bir Kai widget\'ı ekle.</string>
 </resources>

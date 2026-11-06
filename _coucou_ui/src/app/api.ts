@@ -39,7 +39,7 @@ export interface AppState {
     show_clock: boolean; alerts_all_pills: boolean; feels_pc: boolean;
     claude_desktop_chat: boolean; update_checks: boolean;
     summary_enabled: boolean; summary_time: string; mute_others: boolean; plan_in_compact: boolean;
-    phone_link: boolean; phone_answers: boolean;
+    phone_link: boolean; phone_answers: boolean; phone_view: boolean; phone_route: string;
   };
   brain: {
     provider: string; providers: [string, string][]; api_url: string; api_model: string;
@@ -98,7 +98,13 @@ async function call<T>(name: string, fallback: T, ...args: unknown[]): Promise<T
 }
 
 /** Kai window › Phone (phone_link.py). `link` and `qr` only after "Pair". */
-export interface PhoneState { on: boolean; paired: boolean; phones: number; port: number; link?: string; qr?: string }
+export interface PhoneState {
+  on: boolean; paired: boolean; phones: number; port: number; link?: string; qr?: string;
+  /** This computer's Tailscale address, "" without Tailscale. */
+  tailscale?: string;
+  /** The Cloudflare relay is set up, and how its connection is ("online", "connecting", "error: …", "off"). */
+  relaySet?: boolean; relay?: string; error?: string;
+}
 
 export const Api = {
   state: () => call<AppState | null>("state", null),
@@ -107,7 +113,7 @@ export const Api = {
   secret: (key: string, value: string) => call<AppState | null>("secret", null, key, value),
   checkKey: () => call<string>("check_key", "unknown"),
   listModels: () => call<string[]>("list_models", []),
-  phone: (action: "status" | "pair" | "unpair" | "code") => call<PhoneState>("phone", { on: false, paired: false, phones: 0, port: 0 }, action),
+  phone: (action: "status" | "pair" | "unpair" | "code" | "relay", url = "", access = "") => call<PhoneState>("phone", { on: false, paired: false, phones: 0, port: 0 }, action, url, access),
   modelDownload: (id: string) => call<unknown>("model_download", null, id),
   modelRemove: (id: string) => call<unknown>("model_remove", null, id),
   flow: () => call<FlowData | null>("flow_get", null),
