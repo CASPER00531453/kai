@@ -235,6 +235,62 @@ def _qr(text: str) -> str:
     return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
+# ── Being found again: the computer announces itself on the local network ────
+
+
+class _Announcer:
+    """DNS-SD over multicast DNS, `_kai._tcp`, while the link is on.
+
+    When the computer's address changes (another router, DHCP), the paired phone
+    finds it again here. The record says only the protocol version and the first
+    16 hex characters of the certificate's SHA-256: a hint, never a credential. The
+    phone still checks the full pinned certificate before it uses the address.
+    """
+
+    TYPE = "_kai._tcp.local."
+
+    def __init__(self, port: int, fingerprint: str) -> None:
+        self.port = port
+        self.fp = fingerprint[:16]
+        self.address = ""
+        self._zc = None
+        self._info = None
+
+    def refresh(self) -> None:
+        """Announces, or announces again at the new address when it changed."""
+        address = lan_address()
+        if address == self.address or address.startswith("127."):
+            return
+        self.stop()
+        try:
+            from zeroconf import ServiceInfo, Zeroconf
+
+            name = "".join(c for c in socket.gethostname() if c.isalnum() or c in "-_")[:40] or "Kai"
+            self._info = ServiceInfo(
+                self.TYPE, f"{name}.{self.TYPE}", addresses=[socket.inet_aton(address)], port=self.port,
+                properties={"v": str(PROTOCOL), "fp": self.fp}, server=f"{name}.local.",
+            )
+            self._zc = Zeroconf(interfaces=[address])
+            self._zc.register_service(self._info, allow_name_change=True)
+            self.address = address
+            _log(f"yerel ağda duyuruldu ({address})")
+        except Exception as exc:
+            _log(f"yerel ağda duyurulamadı: {type(exc).__name__}")
+            self._zc = None
+
+    def stop(self) -> None:
+        zc, info = self._zc, self._info
+        self._zc = self._info = None
+        self.address = ""
+        if zc:
+            try:
+                if info:
+                    zc.unregister_service(info)
+                zc.close()
+            except Exception:
+                pass
+
+
 # ── What the phone is shown ──────────────────────────────────────────────────
 
 
@@ -421,6 +477,8 @@ class _Server:
         listener.settimeout(1.0)
         self._listener = listener
         threading.Thread(target=self._accept, name="kai-phone", daemon=True).start()
+        self.announcer = _Announcer(self.port, _fp_hex)
+        self.announcer.refresh()
         threading.Thread(target=self._tick, name="kai-phone-tick", daemon=True).start()
         _log(f"dinliyor, port {self.port}")
         self.relay = None
@@ -435,6 +493,8 @@ class _Server:
 
     def stop(self) -> None:
         self._stop = True
+        if getattr(self, "announcer", None):
+            self.announcer.stop()
         if getattr(self, "relay", None):
             self.relay.stop()
         self.drop_all()
@@ -618,6 +678,9 @@ class _Server:
         """Expired requests go, and the plan's usage follows its changes."""
         while not self._stop:
             time.sleep(5)
+            # Another network or a new address: the announcement follows it.
+            if getattr(self, "announcer", None):
+                self.announcer.refresh()
             now = time.time()
             for fp, item in list(self.hub.pending.items()):
                 if now - item["created"] > APPROVAL_TTL:

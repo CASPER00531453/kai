@@ -414,7 +414,7 @@ class AppModel(private val context: Context) : LinkListener {
         val connected = mode != Mode.PAIRED || linkState == LinkState.CONNECTED
         val why = OverlayPolicy.blocker(choice.wished, overlay.permitted(), inForeground)
             ?: if (!connected) "not connected to a computer" else null
-        if (why != null) Log.d("CoucouOverlay", "no island: $why")
+        if (why != null) Log.d("KaiOverlay", "no island: $why")
         return why == null
     }
 
@@ -560,7 +560,7 @@ class AppModel(private val context: Context) : LinkListener {
     /** A computer matching the paired fingerprint answered with the pinned certificate (checked by a bare TLS handshake). */
     private fun onAddressFound(host: String, port: Int) {
         if (mode != Mode.PAIRED || currentPairing == null) return
-        Log.d("CoucouDiscovery", "address updated")
+        Log.d("KaiDiscovery", "address updated")
         useAddress(host, port)
     }
 

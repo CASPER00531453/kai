@@ -25,7 +25,7 @@ export const DEFAULT_MASCOT: Mascot = "ghost";
 
 /** Each name as [Türkçe, English]. */
 const NAMES: Record<Mascot, [string, string]> = {
-  ghost: ["Hayalet", "Ghost"], mochi: ["Mochi", "Mochi"], clover: ["Yonca", "Clover"], ears: ["Kulaklı", "Ears"],
+  ghost: ["Hayalet", "Ghost"], mochi: ["Kai", "Kai"], clover: ["Yonca", "Clover"], ears: ["Kulaklı", "Ears"],
   drop: ["Damla", "Drop"], antenna: ["Anten", "Antenna"], cat: ["Kedi", "Cat"], cloud: ["Bulut", "Cloud"],
   star: ["Yıldız", "Star"], bunny: ["Tavşan", "Bunny"], bear: ["Ayı", "Bear"], bean: ["Fasulye", "Bean"],
   hex: ["Altıgen", "Hexagon"], flame: ["Kıvılcım", "Spark"], planet: ["Gezegen", "Planet"], sprout: ["Filiz", "Sprout"],

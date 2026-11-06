@@ -40,7 +40,7 @@ class GlanceTile : TileService() {
         private fun paint(tile: TileService) {
             val t = tile.qsTile ?: return
             val g: Glance = (tile.applicationContext as CoucouApp).model.glance()
-            t.label = "Coucou"
+            t.label = "Kai"
             t.subtitle = g.headline
             t.state = if (g.connected) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
             t.updateTile()

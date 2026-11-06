@@ -49,6 +49,8 @@ tmp_ret = collect_all('sentencepiece')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 # Without its test suite: hundreds of modules nobody runs, and minutes of build time.
 hiddenimports += collect_submodules('icalendar', filter=lambda name: '.test' not in name)
+# The phone link announces the computer on the local network (phone_link._Announcer).
+hiddenimports += collect_submodules('zeroconf') + ['ifaddr']
 datas += collect_data_files('icalendar', excludes=['**/test/**', '**/tests/**'])
 # Without its test suite: hundreds of modules nobody runs, and minutes of build time.
 hiddenimports += collect_submodules('recurring_ical_events', filter=lambda name: '.test' not in name)

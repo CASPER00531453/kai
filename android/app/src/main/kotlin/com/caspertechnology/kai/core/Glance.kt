@@ -54,12 +54,12 @@ object GlanceBuilder {
         approvals: Int,
         nameOf: (String) -> String,
     ): Glance {
-        if (!paired) return Glance(Texts.t("glance_not_paired", "Not paired"), Texts.t("glance_not_paired_detail", "Open Coucou to connect to your computer"), GlanceTone.CALM, false, emptyList(), 0)
+        if (!paired) return Glance(Texts.t("glance_not_paired", "Not paired"), Texts.t("glance_not_paired_detail", "Open Kai to connect to your computer"), GlanceTone.CALM, false, emptyList(), 0)
         if (link != LinkState.CONNECTED) {
             val connecting = link == LinkState.CONNECTING
             return Glance(
                 if (connecting) Texts.t("status_connecting", "Connecting…") else Texts.t("status_not_connected", "Not connected"),
-                if (connecting) Texts.t("glance_reaching", "Reaching your computer") else Texts.t("glance_cannot_reach", "Coucou cannot reach your computer"),
+                if (connecting) Texts.t("glance_reaching", "Reaching your computer") else Texts.t("glance_cannot_reach", "Kai cannot reach your computer"),
                 GlanceTone.CALM, false, emptyList(), 0,
             )
         }

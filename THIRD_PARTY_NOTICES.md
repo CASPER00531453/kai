@@ -32,6 +32,8 @@ own projects, linked by name on PyPI or npm.
 | pywebview | BSD-3-Clause |
 | pywin32 | PSF |
 | **edge-tts, pystray, recurring-ical-events, x-wr-timezone** | **LGPL-3.0** |
+| **zeroconf** | **LGPL-2.1-or-later** |
+| ifaddr | MIT |
 | PyInstaller (the launcher) | GPL-2.0-or-later with the PyInstaller bootloader exception, which allows distributing apps built with it under any license |
 
 ### LGPL libraries

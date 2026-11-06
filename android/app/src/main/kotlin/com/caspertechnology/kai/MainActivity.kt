@@ -268,7 +268,7 @@ class MainActivity : ComponentActivity() {
     /** A kai://pair link (from the camera app or a browser) or a tap on an approval notification. */
     private fun handle(i: Intent?) {
         i ?: return
-        Log.d("CoucouLaunch", "MainActivity intent: action=${i.action} data=${i.data != null}")
+        Log.d("KaiLaunch", "MainActivity intent: action=${i.action} data=${i.data != null}")
         i.data?.let { uri ->
             if (uri.scheme == "kai") {
                 // Opened from the camera app or a browser: never paired without the user's OK.

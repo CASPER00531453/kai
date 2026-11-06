@@ -160,7 +160,7 @@ class Notifications(private val context: Context) {
 
     fun showApproval(r: ApprovalRequest, agentName: String, alert: OverlayPolicy.ApprovalAlert = OverlayPolicy.ApprovalAlert.HEADS_UP) {
         val channel = if (alert == OverlayPolicy.ApprovalAlert.QUIET) CH_APPROVAL_QUIET else ApprovalChannels.id(vibration)
-        Log.d("CoucouOverlay", "approval notification: $alert")
+        Log.d("KaiOverlay", "approval notification: $alert")
         val id = idFor(r.fingerprint)
         val deny = PendingIntent.getBroadcast(
             context, id, Intent(context, ActionReceiver::class.java).setAction(ACTION_DENY).putExtra(EXTRA_FP, r.fingerprint),
@@ -242,12 +242,12 @@ class Notifications(private val context: Context) {
 
     /** Opens the app on the biometric prompt for this request (the same as tapping Allow in the notification). */
     fun openAllow(fp: String) {
-        Log.d("CoucouLaunch", "open the app on Allow (tap on the pill)")
+        Log.d("KaiLaunch", "open the app on Allow (tap on the pill)")
         runCatching { open(fp, true, idFor(fp) + 1).send() }
     }
 
     fun openApp() {
-        Log.d("CoucouLaunch", "open the app (tap on the pill)")
+        Log.d("KaiLaunch", "open the app (tap on the pill)")
         runCatching { open(null, false, 0).send() }
     }
 

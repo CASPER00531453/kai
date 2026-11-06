@@ -22,8 +22,8 @@ android {
         applicationId = "com.caspertechnology.kai"
         minSdk = 30
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
         // The app's languages (English and the translations in i18n/translations); the libraries' other languages are left out of the app.
         resourceConfigurations += listOf("en", "fr", "es", "pt-rBR", "b+zh+Hans", "hi", "bn", "ru", "in", "ar", "tr")
     }

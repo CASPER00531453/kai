@@ -447,5 +447,5 @@ class IslandOverlay(
         }
     }
 
-    private companion object { const val TAG = "CoucouIsland" }
+    private companion object { const val TAG = "KaiIsland" }
 }

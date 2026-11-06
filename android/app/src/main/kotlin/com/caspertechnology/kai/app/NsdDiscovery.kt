@@ -102,5 +102,5 @@ class NsdDiscovery(context: Context) : DiscoverySource {
         return Found(info.serviceName.orEmpty(), host, info.port, attr("fp"), attr("v"))
     }
 
-    private companion object { const val TAG = "CoucouDiscovery" }
+    private companion object { const val TAG = "KaiDiscovery" }
 }
