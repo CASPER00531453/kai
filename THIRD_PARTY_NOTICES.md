@@ -1,6 +1,6 @@
 # Third-party notices
 
-Kai is made by [Casper Technology](https://casper-technology.vercel.app/) and is proprietary software, all rights reserved (see [LICENSE](LICENSE)). The installer also carries the
+Kai is made by [Casper Technology](https://casper-technology.vercel.app/) and is free software under the GNU General Public License v3 or later; the name Kai, the mascots, the icon and the sounds are reserved (see [LICENSE](LICENSE)). The installer also carries the
 libraries below, each under its own license. Their license texts are in their
 own projects, linked by name on PyPI or npm.
 

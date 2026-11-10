@@ -182,7 +182,7 @@ export function dictionaryPage(ctx: Ctx): HTMLElement {
     x.addEventListener("click", () => { items = items.filter((i) => i !== n); void save(); });
     return x;
   }));
-  const word = input("", L("örn. Kai, Burak, Claude Code", "e.g. Kai, Claude Code"), () => {});
+  const word = input("", L("örn. Kai, Ayşe, Claude Code", "e.g. Kai, Claude Code"), () => {});
   const addWord = button(L("Ekle", "Add"), () => {
     const v = word.value.trim();
     if (!v) return;

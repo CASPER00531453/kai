@@ -46,7 +46,7 @@ export function generalPage(ctx: Ctx): HTMLElement {
           toggle(f.summary_enabled, (on) => void set("summary_enabled", on)))),
     ),
     card(L("Sürüm", "Version"), row(`Kai ${upd.current || i.version}`, upd.error ? upd.error : null, updBtn),
-      row("Casper Technology", L("Kai'yi yapan ekip. Tüm hakları saklıdır.", "The team that makes Kai. All rights reserved."), h("div", { class: "a-inline" },
+      row("Casper Technology", L("Kai'yi yapan ekip. Kod GPL-3.0 ile açık kaynak; Kai adı ve maskotlar Casper Technology'nin.", "The team that makes Kai. The code is open source under GPL-3.0; the name Kai and the mascots are Casper Technology's."), h("div", { class: "a-inline" },
         button(L("Lisansı aç", "View license"), () => void Api.openLicense(), "ghost"),
         button(L("Siteye git", "Visit website"), () => void Api.openUrl("https://casper-technology.vercel.app/"), "ghost"))),
       row(L("Yeni sürümleri adada haber ver", "Tell me about new versions in the island"), L("Kai günde birkaç kez GitHub'daki sürümlerine bakar; senden hiçbir şey gönderilmez.", "Kai looks at its releases on GitHub a few times a day; nothing about you is sent."), toggle(f.update_checks, (on) => void set("update_checks", on))), row(L("Tanıtım turu", "Tour"), L("AltGr, OK Kai, dikte ve renk, 30 saniyede.", "AltGr, OK Kai, dictation and colour, in 30 seconds."), button(L("Turu tekrar göster", "Show the tour again"), () => showTour(ctx.state, () => void ctx.refresh()), "ghost"))),
