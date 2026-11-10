@@ -19,7 +19,7 @@ AppPublisherURL=https://casper-technology.vercel.app/
 AppSupportURL=https://casper-technology.vercel.app/
 AppCopyright=Copyright (c) 2026 Casper Technology
 ; New installs show the license and need "I accept"; silent updates skip the page.
-LicenseFile=..\LICENSE
+LicenseFile=..\NOTICE
 DefaultDirName={localappdata}\Kai
 DefaultGroupName=Kai
 DisableProgramGroupPage=yes
@@ -61,6 +61,7 @@ Type: files; Name: "{group}\Test Merkezi.lnk"
 Source: "..\dist\Kai\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Kai's MIT license (with Coucou's notice) and the bundled libraries' licenses.
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "..\NOTICE"; DestDir: "{app}"; DestName: "NOTICE.txt"; Flags: ignoreversion
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
