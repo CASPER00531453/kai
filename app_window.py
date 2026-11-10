@@ -239,9 +239,9 @@ class AppApi:
     def open_license(self) -> None:
         """Kai's license (installed next to Kai.exe as LICENSE.txt), in the text editor."""
         if getattr(sys, "frozen", False):
-            path = os.path.join(os.path.dirname(sys.executable), "LICENSE.txt")
+            path = os.path.join(os.path.dirname(sys.executable), "NOTICE.txt")
         else:
-            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE")
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "NOTICE")
         if os.path.isfile(path):
             os.startfile(path)
 

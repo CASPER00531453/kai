@@ -1,0 +1,53 @@
+﻿Kai
+Copyright (C) 2026 Casper Technology (https://casper-technology.vercel.app/)
+
+Kai's source code is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. The full text of the licence is in LICENSE (LICENSE.txt next to Kai.exe).
+
+Kai is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+-------------------------------------------------------------------------------
+Name, mascots, icon and sounds
+
+The GPL covers the code. It does not grant any right to the name "Kai", the
+Kai mascots' character designs, the app icon, the sounds, or the names and
+logos of Casper Technology: these are reserved by Casper Technology. You may
+fork and redistribute the code under the GPL, but a modified version must not
+be called Kai or present itself as Casper Technology's product, and must
+replace the mascots, the icon and the sounds with its own.
+
+-------------------------------------------------------------------------------
+Part of Kai's island and window interface (the _coucou_ui folder) is derived
+from Coucou (https://github.com/Louis-CFM/coucou). That code was received
+under the MIT License below, whose notice must be kept. The MIT License
+applies only to Coucou's original code as published by its author; Kai's own
+code, changes and additions are under the GPL above.
+
+MIT License
+
+Copyright (c) 2026 Louis Raillé
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Other third-party libraries bundled with Kai keep their own licenses; see
+THIRD_PARTY_NOTICES.md.

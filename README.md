@@ -28,6 +28,6 @@ The Android app is in `android/`; build it with `android\build-apk.ps1` (Android
 
 ## Licence
 
-Kai's code is free software under the **GNU General Public License v3 or later**: see [LICENSE](LICENSE). The name **Kai**, the Kai mascots, the icon and the sounds are reserved by Casper Technology. You may fork the code under the GPL, but a modified version must use its own name and artwork.
+Kai's code is free software under the **GNU General Public License v3 or later**: see [LICENSE](LICENSE) and [NOTICE](NOTICE). The name **Kai**, the Kai mascots, the icon and the sounds are reserved by Casper Technology. You may fork the code under the GPL, but a modified version must use its own name and artwork.
 
 Kai builds on open-source work, listed with its licences in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
