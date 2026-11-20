@@ -7,3 +7,6 @@ data/
 __pycache__/
 .venv/
 .pytest_cache/
+
+# Casper.exe derleme tarifi repoda kalmalı.
+!Casper.spec
