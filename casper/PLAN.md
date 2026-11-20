@@ -19,7 +19,7 @@ Onun işi şu:
   uzunluğu, sıcaklık, kim kimden ne istiyor),
 - bunları kanıtıyla birlikte söylemek,
 - belirsizliği açıkça söylemek ("bu tek mesajdan bir şey çıkmaz"),
-- senin kendi düşünce tuzaklarını da yakalamak (aşağıda, Bölüm 5).
+- senin kendi düşünce tuzaklarını da yakalamak (Bölüm 3, B).
 
 Kuruntuyu büyüten bir paranoya makinesi değil, dürüst bir gözlemci.
 
@@ -172,10 +172,12 @@ olduğu gibi kopyalamıyoruz (telif). Ayrıca her nota güvenilirlik etiketi koy
 
 ## 5. Arayüz
 
-- **Telegram botu:** Telefondan da bilgisayardan da dertleşme. Gün sonu
-  raporu oraya gelir.
-- Komut örnekleri: `/bugun`, `/kisi Ahmet`, `/hafta`, `/unut Ahmet`, `/dur` (kaydı duraklat).
-- İleride Kai'nin ses altyapısıyla sesli konuşma, Kai adasında küçük bir Casper göstergesi.
+Telegram yok; her şey Windows masaüstü uygulamasında (pywebview):
+- **Dertleş**, **Kişiler** (kişi oluştur → kişi ayarlarından sohbet yükle →
+  analiz), **Gözcü**, **Gün sonu**, **Hafıza**, **Ayarlar**.
+- **Gözcü paneli:** İkinci ekranda her zaman üstte duran küçük pencere.
+  2/3/5 saniyede bir ekran görüntüsü alınır, Windows OCR ile okunur.
+- İleride Kai'nin ses altyapısıyla sesli konuşma.
 
 ---
 
@@ -198,7 +200,7 @@ olduğu gibi kopyalamıyoruz (telif). Ayrıca her nota güvenilirlik etiketi koy
 | 1 | **İçe aktarıcılar** (WhatsApp `.txt`, Instagram JSON, Discord JSON) → `messages.db` | Geçmiş tek yerde |
 | 2 | **Metrikler** + ilk kişi kartları (geçmişten) | "Kim nasıl" ilk tablo |
 | 3 | **Bilgi tabanı** `knowledge/` (A, B, C) + Casper'ın kişiliği | Casper'ın "eğitimi" |
-| 4 | **Telegram botu** + hafıza ile dertleşme | Konuşabilirsin |
+| 4 | **Masaüstü uygulaması** + hafıza ile dertleşme | Konuşabilirsin |
 | 5 | **Gece analizi** + günlük rapor | Her gece yorum |
 | 6 | **Windows canlı yakalama** (ekran + OCR + sohbet çözümleme) | Bilgisayardan otomatik veri |
 | 7 | **Android** (bildirim dinleyici → sonra erişilebilirlik) | Telefondan otomatik veri |
@@ -221,7 +223,7 @@ casper/
     memory/         db.py, people.py, vectors.py
     analysis/       metrics.py, nightly.py, weekly.py
     brain/          llm.py, persona.md, rag.py
-    bot/            telegram_bot.py
+    ui/             index.html, app.js, overlay.html
   knowledge/        *.md  (kavram notları)
   android/          (bildirim/erişilebilirlik servisi)
   data/             (git'e GİRMEZ)
@@ -234,4 +236,10 @@ casper/
 1. Birkaç arkadaşınla WhatsApp sohbetini **medya olmadan** dışa aktar.
 2. Instagram veri indirmesini **şimdiden iste** (hazırlanması saatler, bazen günler sürüyor).
 3. Discord veri paketini **şimdiden iste** (birkaç gün sürebilir).
-4. Bir Claude API anahtarı ve bir Telegram bot token'ı (@BotFather) hazırla.
+4. Bir Claude API anahtarı hazırla.
+
+## Durum (v0.1)
+
+Yapıldı: 1-6. aşamalar (içe aktarıcılar, metrikler, küfür seviyeleri, bilgi
+tabanı, masaüstü uygulaması, dertleşme + hafıza, kişi analizi, gün sonu,
+gözcü modu + ikinci ekran paneli). Sırada: Android (7. aşama).
